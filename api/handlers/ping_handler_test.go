@@ -1,8 +1,8 @@
 package handlers_test
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +11,6 @@ import (
 )
 
 func TestPingHandler(t *testing.T) {
-	
 
 	pingHandler := handlers.PingHandler{}
 

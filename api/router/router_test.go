@@ -1,9 +1,9 @@
 package router_test
 
 import (
-	"testing"
 	"net/http"
 	"net/http/httptest"
+	"testing"
 
 	"github.com/Joey-Boivin/cdisk/api/router"
 )
@@ -41,7 +41,7 @@ func TestRouter(t *testing.T) {
 		endpoint := "/mock"
 		router.AddRoute(handler.Get, method, endpoint)
 		getRequest := createRequest(method, endpoint)
-		
+
 		router.ServeHTTP(response, getRequest)
 
 		assertTrue(t, handler.Called)
@@ -67,7 +67,7 @@ func TestRouter(t *testing.T) {
 		anyMethod := http.MethodConnect
 		anyEndpoint := "/any"
 		anyRequestWithNoMatchingEndpoint := createRequest(anyMethod, anyEndpoint)
-		
+
 		router.ServeHTTP(response, anyRequestWithNoMatchingEndpoint)
 
 		got := response.Code
@@ -82,7 +82,7 @@ func TestRouter(t *testing.T) {
 		endpoint := "/mock"
 		router.AddRoute(handler.Get, method, endpoint)
 		anyRequestWithNoMatchingMethod := createRequest(http.MethodDelete, endpoint)
-		
+
 		router.ServeHTTP(response, anyRequestWithNoMatchingMethod)
 
 		got := response.Code

@@ -44,4 +44,3 @@ func (r *router) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 func (r *router) AddRoute(handler http.HandlerFunc, method string, endpoint string) {
 	r.routes = append(r.routes, Route{method: method, handler: handler, endpoint: endpoint})
 }
-
