@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Joey-Boivin/cdisk/api/server"
+	"github.com/Joey-Boivin/cdisk/api/handlers"
+	"github.com/Joey-Boivin/cdisk/api/router"
 	"gopkg.in/yaml.v3"
 )
 
@@ -35,6 +36,8 @@ func main() {
 
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
-	server := server.NewServer()
-	http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), server)
+	pingRessource := &handlers.PingHandler{}
+	router := router.NewRouter()
+	router.AddRoute(pingRessource.Get, http.MethodGet, "/ping")
+	http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router)
 }
