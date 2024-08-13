@@ -13,7 +13,7 @@ type HandlerMock struct {
 }
 
 func (h *HandlerMock) Get(w http.ResponseWriter, r *http.Request) {
-	h.Called = true
+	h.Called = false
 }
 
 type HandlerWithMultipleEndpointsMock struct {
