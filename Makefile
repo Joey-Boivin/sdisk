@@ -15,6 +15,9 @@ build: prep
 test:
 	go test github.com/Joey-Boivin/sdisk-api/...
 
+lint:
+	golangci-lint run ./...
+
 prep:
 	mkdir -p bin
 
