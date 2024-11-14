@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -13,5 +14,8 @@ type PingHandler struct {
 }
 
 func (p *PingHandler) Get(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(response))
+	_, err := w.Write([]byte(response))
+	if err != nil {
+		log.Fatal("Error writing response in PingHandler")
+	}
 }

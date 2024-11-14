@@ -36,8 +36,11 @@ func main() {
 
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
-	pingRessource := &handlers.PingHandler{}
+	pingResource := &handlers.PingHandler{}
 	router := router.NewRouter()
-	router.AddRoute(pingRessource.Get, http.MethodGet, "/ping")
-	http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router)
+	router.AddRoute(pingResource.Get, http.MethodGet, "/ping")
+
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router); err == nil {
+		log.Fatalf("Error trying to start server on %s:%d. %v", conf.Host, conf.Port, err)
+	}
 }
