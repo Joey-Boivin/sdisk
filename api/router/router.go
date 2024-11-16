@@ -10,17 +10,17 @@ type Route struct {
 	endpoint string
 }
 
-type router struct {
+type Router struct {
 	http.Handler
 	routes []Route
 }
 
-func NewRouter() *router {
-	r := new(router)
+func NewRouter() *Router {
+	r := new(Router)
 	return r
 }
 
-func (r *router) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (r *Router) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	var found int = -1
 
 	for i, route := range r.routes {
@@ -41,6 +41,6 @@ func (r *router) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func (r *router) AddRoute(handler http.HandlerFunc, method string, endpoint string) {
+func (r *Router) AddRoute(handler http.HandlerFunc, method string, endpoint string) {
 	r.routes = append(r.routes, Route{method: method, handler: handler, endpoint: endpoint})
 }

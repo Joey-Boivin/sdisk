@@ -7,16 +7,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/Joey-Boivin/cdisk/api/handlers"
+	"github.com/Joey-Boivin/sdisk-api/api/handlers"
 )
 
 func TestPingHandler(t *testing.T) {
 
-	pingHandler := handlers.PingHandler{}
+	pingHandler := handlers.NewPingHandler()
 
 	t.Run("ReturnHttpStatusOk", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		getRequest := createRequest(http.MethodGet)
+		getRequest, _ := http.NewRequest(http.MethodGet, handlers.PingEndpoint, nil)
 
 		pingHandler.Get(response, getRequest)
 
@@ -27,7 +27,7 @@ func TestPingHandler(t *testing.T) {
 
 	t.Run("SendPong", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		getRequest := createRequest(http.MethodGet)
+		getRequest, _ := http.NewRequest(http.MethodGet, handlers.PingEndpoint, nil)
 
 		pingHandler.Get(response, getRequest)
 
@@ -35,11 +35,6 @@ func TestPingHandler(t *testing.T) {
 		want := []byte("pong")
 		assertEquals(t, got, want)
 	})
-}
-
-func createRequest(method string) *http.Request {
-	req, _ := http.NewRequest(method, handlers.PingEndpoint, nil)
-	return req
 }
 
 func assertStatus(t *testing.T, gotCode int, wantCode int) {
