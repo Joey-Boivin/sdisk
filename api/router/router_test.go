@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Joey-Boivin/cdisk/api/router"
+	"github.com/Joey-Boivin/sdisk-api/api/router"
 )
 
 type HandlerMock struct {

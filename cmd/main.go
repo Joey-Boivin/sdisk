@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/Joey-Boivin/sdisk-api/api/application"
+	"github.com/Joey-Boivin/sdisk-api/api/repository"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/Joey-Boivin/cdisk/api/handlers"
-	"github.com/Joey-Boivin/cdisk/api/router"
+	"github.com/Joey-Boivin/sdisk-api/api/handlers"
+	"github.com/Joey-Boivin/sdisk-api/api/router"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,11 +38,16 @@ func main() {
 
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
-	pingResource := &handlers.PingHandler{}
-	router := router.NewRouter()
-	router.AddRoute(pingResource.Get, http.MethodGet, "/ping")
+	userRepository := repository.NewRamRepository()
+	registerService := application.NewRegisterService(userRepository)
+	userResource := handlers.NewUserHandler(registerService)
+	pingResource := handlers.NewPingHandler()
 
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router); err == nil {
+	router := router.NewRouter()
+	router.AddRoute(pingResource.Get, http.MethodGet, handlers.PingEndpoint)
+	router.AddRoute(userResource.Post, http.MethodPost, handlers.UsersEndpoint)
+
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router); err != nil {
 		log.Fatalf("Error trying to start server on %s:%d. %v", conf.Host, conf.Port, err)
 	}
 }

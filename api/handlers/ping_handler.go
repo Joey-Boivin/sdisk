@@ -13,8 +13,12 @@ const (
 type PingHandler struct {
 }
 
-func (p *PingHandler) Get(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte(response))
+func NewPingHandler() *PingHandler {
+	return &PingHandler{}
+}
+
+func (p *PingHandler) Get(writer http.ResponseWriter, req *http.Request) {
+	_, err := writer.Write([]byte(response))
 	if err != nil {
 		log.Fatal("Error writing response in PingHandler")
 	}
