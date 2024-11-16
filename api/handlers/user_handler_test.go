@@ -11,27 +11,29 @@ import (
 )
 
 type userRepositoryMock struct {
-	used         bool
-	emailUsed    string
-	passwordUsed string
+	userAlreadyExists bool
+	saved             bool
 }
 
 func (r *userRepositoryMock) SaveUser(u *models.User) {
-	r.used = true
-	r.emailUsed = u.GetEmail()
-	r.passwordUsed = u.GetPassword()
+	r.saved = true
 }
 
-func (r *userRepositoryMock) GetUser(id string) models.User {
-	return *models.NewUser("1", "1")
+func (r *userRepositoryMock) GetUser(id string) *models.User {
+	if r.userAlreadyExists {
+		anyUserPassword := "1"
+		return models.NewUser(id, anyUserPassword)
+	}
+
+	return nil
 }
 
 func TestUserHandler(t *testing.T) {
-	userRepoMock := userRepositoryMock{}
-	service := application.NewRegisterService(&userRepoMock)
-	userHandler := handlers.NewUserHandler(service)
 
 	t.Run("ReturnHttpBadRequestIfParseError", func(t *testing.T) {
+		userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: false}
+		service := application.NewRegisterService(&userRepoMock)
+		userHandler := handlers.NewUserHandler(service)
 		response := httptest.NewRecorder()
 		badRequest := "{"
 		reader := strings.NewReader(badRequest)
@@ -42,9 +44,13 @@ func TestUserHandler(t *testing.T) {
 		got := response.Code
 		want := http.StatusBadRequest
 		assertStatus(t, got, want)
+		assertNoSave(t, userRepoMock)
 	})
 
-	t.Run("ReturnHttpOkIfNoParseErrors", func(t *testing.T) {
+	t.Run("UserSavedIfNoErrors", func(t *testing.T) {
+		userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: false}
+		service := application.NewRegisterService(&userRepoMock)
+		userHandler := handlers.NewUserHandler(service)
 		response := httptest.NewRecorder()
 		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 		reader := strings.NewReader(validUserJson)
@@ -55,6 +61,36 @@ func TestUserHandler(t *testing.T) {
 		got := response.Code
 		want := http.StatusCreated
 		assertStatus(t, got, want)
+		assertSave(t, userRepoMock)
 	})
 
+	t.Run("ReturnHttpForbiddenIfUserAlreadyExists", func(t *testing.T) {
+		userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: true}
+		service := application.NewRegisterService(&userRepoMock)
+		userHandler := handlers.NewUserHandler(service)
+		response := httptest.NewRecorder()
+		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
+		reader := strings.NewReader(validUserJson)
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.UsersEndpoint, reader)
+
+		userHandler.Post(response, postRequest)
+
+		got := response.Code
+		want := http.StatusForbidden
+		assertStatus(t, got, want)
+		assertNoSave(t, userRepoMock)
+	})
+
+}
+
+func assertNoSave(t *testing.T, userRepoMock userRepositoryMock) {
+	if userRepoMock.saved {
+		t.Fatalf("No save should have happened")
+	}
+}
+
+func assertSave(t *testing.T, userRepoMock userRepositoryMock) {
+	if !userRepoMock.saved {
+		t.Fatalf("User should have been saved but was not")
+	}
 }

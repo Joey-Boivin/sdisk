@@ -1,6 +1,8 @@
 package repository
 
-import "github.com/Joey-Boivin/sdisk-api/api/models"
+import (
+	"github.com/Joey-Boivin/sdisk-api/api/models"
+)
 
 type RamRepository struct {
 	users map[string]models.User
@@ -16,6 +18,11 @@ func (r *RamRepository) SaveUser(u *models.User) {
 	r.users[u.GetEmail()] = *u
 }
 
-func (r *RamRepository) GetUser(id string) models.User {
-	return r.users[id]
+func (r *RamRepository) GetUser(id string) *models.User {
+	if val, ok := r.users[id]; ok {
+		user := val
+		return &user
+	} else {
+		return nil
+	}
 }

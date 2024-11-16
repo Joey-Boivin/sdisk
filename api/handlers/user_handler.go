@@ -34,7 +34,11 @@ func (r *UserHandler) Post(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	r.service.RegisterUser(registerRequest.Email, registerRequest.Password)
+	err = r.service.RegisterUser(registerRequest.Email, registerRequest.Password)
+	if err != nil {
+		writer.WriteHeader(http.StatusForbidden)
+		return
+	}
 
 	writer.WriteHeader(http.StatusCreated)
 }

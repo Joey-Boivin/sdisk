@@ -2,7 +2,7 @@ package models
 
 type UserRepository interface {
 	SaveUser(u *User)
-	GetUser(id string) (u User)
+	GetUser(id string) *User
 }
 
 type User struct {
