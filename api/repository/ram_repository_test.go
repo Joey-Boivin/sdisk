@@ -6,8 +6,7 @@ import (
 	"testing"
 )
 
-func TestRamRepository(t *testing.T) {
-
+func TestSaveUser(t *testing.T) {
 	ramRepository := repository.NewRamRepository()
 
 	t.Run("SaveCorrectUser", func(t *testing.T) {
@@ -20,6 +19,10 @@ func TestRamRepository(t *testing.T) {
 		userSaved := ramRepository.GetUser(anyUserEmail)
 		assertSameUsers(t, userToSave, userSaved)
 	})
+}
+
+func TestGetUser(t *testing.T) {
+	ramRepository := repository.NewRamRepository()
 
 	t.Run("ReturnNilIfUserDoesNotExist", func(t *testing.T) {
 		emailOfUserNotInRepository := "JOHN_DOE@TEST.com"

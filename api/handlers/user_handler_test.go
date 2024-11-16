@@ -28,12 +28,12 @@ func (r *userRepositoryMock) GetUser(id string) *models.User {
 	return nil
 }
 
-func TestUserHandler(t *testing.T) {
+func TestBadRequest(t *testing.T) {
+	userRepoMock := userRepositoryMock{saved: false}
+	service := application.NewRegisterService(&userRepoMock)
+	userHandler := handlers.NewUserHandler(service)
 
 	t.Run("ReturnHttpBadRequestIfParseError", func(t *testing.T) {
-		userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: false}
-		service := application.NewRegisterService(&userRepoMock)
-		userHandler := handlers.NewUserHandler(service)
 		response := httptest.NewRecorder()
 		badRequest := "{"
 		reader := strings.NewReader(badRequest)
@@ -44,30 +44,26 @@ func TestUserHandler(t *testing.T) {
 		got := response.Code
 		want := http.StatusBadRequest
 		assertStatus(t, got, want)
-		assertNoSave(t, userRepoMock)
 	})
 
-	t.Run("UserSavedIfNoErrors", func(t *testing.T) {
-		userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: false}
-		service := application.NewRegisterService(&userRepoMock)
-		userHandler := handlers.NewUserHandler(service)
+	t.Run("DoNotSaveAUserIfParseError", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
-		reader := strings.NewReader(validUserJson)
+		badRequest := "{"
+		reader := strings.NewReader(badRequest)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.UsersEndpoint, reader)
 
 		userHandler.Post(response, postRequest)
 
-		got := response.Code
-		want := http.StatusCreated
-		assertStatus(t, got, want)
-		assertSave(t, userRepoMock)
+		assertNoSave(t, userRepoMock)
 	})
+}
+
+func TestUserAlreadyExists(t *testing.T) {
+	userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: true}
+	service := application.NewRegisterService(&userRepoMock)
+	userHandler := handlers.NewUserHandler(service)
 
 	t.Run("ReturnHttpForbiddenIfUserAlreadyExists", func(t *testing.T) {
-		userRepoMock := userRepositoryMock{saved: false, userAlreadyExists: true}
-		service := application.NewRegisterService(&userRepoMock)
-		userHandler := handlers.NewUserHandler(service)
 		response := httptest.NewRecorder()
 		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 		reader := strings.NewReader(validUserJson)
@@ -78,9 +74,48 @@ func TestUserHandler(t *testing.T) {
 		got := response.Code
 		want := http.StatusForbidden
 		assertStatus(t, got, want)
-		assertNoSave(t, userRepoMock)
 	})
 
+	t.Run("DoNotOverrideExistingUser", func(t *testing.T) {
+		response := httptest.NewRecorder()
+		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
+		reader := strings.NewReader(validUserJson)
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.UsersEndpoint, reader)
+
+		userHandler.Post(response, postRequest)
+
+		assertNoSave(t, userRepoMock)
+	})
+}
+
+func TestUserCanRegister(t *testing.T) {
+	userRepoMock := userRepositoryMock{}
+	service := application.NewRegisterService(&userRepoMock)
+	userHandler := handlers.NewUserHandler(service)
+
+	t.Run("ReturnHttpCreatedIfNoErrors", func(t *testing.T) {
+		response := httptest.NewRecorder()
+		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
+		reader := strings.NewReader(validUserJson)
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.UsersEndpoint, reader)
+
+		userHandler.Post(response, postRequest)
+
+		got := response.Code
+		want := http.StatusCreated
+		assertStatus(t, got, want)
+	})
+
+	t.Run("UserSavedIfNoErrors", func(t *testing.T) {
+		response := httptest.NewRecorder()
+		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
+		reader := strings.NewReader(validUserJson)
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.UsersEndpoint, reader)
+
+		userHandler.Post(response, postRequest)
+
+		assertSave(t, userRepoMock)
+	})
 }
 
 func assertNoSave(t *testing.T, userRepoMock userRepositoryMock) {
