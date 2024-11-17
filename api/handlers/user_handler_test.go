@@ -15,12 +15,16 @@ import (
 )
 
 func TestCreateUser(t *testing.T) {
+	validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
 	userRepoDummy := mocks.RamRepository{}
 	registerService := application.NewRegisterService(&userRepoDummy)
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)
 	userHandler := handlers.NewUserHandler(registerService, fetchUserService)
+	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
+		return models.NewUser(userInRepoEmail, anyUserPassword)
+	}}
 
 	t.Run("ReturnHttpBadRequestIfParseError", func(t *testing.T) {
 		response := httptest.NewRecorder()
@@ -48,7 +52,6 @@ func TestCreateUser(t *testing.T) {
 
 	t.Run("ReturnHttpCreatedIfNoErrors", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
@@ -61,7 +64,6 @@ func TestCreateUser(t *testing.T) {
 
 	t.Run("UserSavedIfNoErrors", func(t *testing.T) {
 		response := httptest.NewRecorder()
-		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
@@ -71,13 +73,10 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("ReturnHttpForbiddenIfUserAlreadyExists", func(t *testing.T) {
-		userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
-			return models.NewUser(userInRepoEmail, anyUserPassword)
-		}}
 		registerService = application.NewRegisterService(&userInRepoMock)
 		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
 		response := httptest.NewRecorder()
-		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
+
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
@@ -89,13 +88,9 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("DoNotOverrideExistingUser", func(t *testing.T) {
-		userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
-			return models.NewUser(userInRepoEmail, anyUserPassword)
-		}}
 		registerService = application.NewRegisterService(&userInRepoMock)
 		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
 		response := httptest.NewRecorder()
-		validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
@@ -105,13 +100,16 @@ func TestCreateUser(t *testing.T) {
 	})
 }
 
-func GetUser(t *testing.T) {
+func TestGetUser(t *testing.T) {
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
 	userRepoDummy := mocks.RamRepository{}
 	registerService := application.NewRegisterService(&userRepoDummy)
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)
 	userHandler := handlers.NewUserHandler(registerService, fetchUserService)
+	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
+		return models.NewUser(userInRepoEmail, anyUserPassword)
+	}}
 
 	t.Run("ReturnHttpNotFoundIfUserDoesNotExist", func(t *testing.T) {
 		response := httptest.NewRecorder()
@@ -126,14 +124,12 @@ func GetUser(t *testing.T) {
 	})
 
 	t.Run("ReturnHttpOkIfUserExists", func(t *testing.T) {
-		userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
-			return models.NewUser(userInRepoEmail, anyUserPassword)
-		}}
-		registerService = application.NewRegisterService(&userInRepoMock)
+		fetchUserService = application.NewFetchUserService(&userInRepoMock)
 		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
+		getRequest.SetPathValue("id", userInRepoEmail)
 
 		userHandler.Get(response, getRequest)
 
@@ -143,9 +139,6 @@ func GetUser(t *testing.T) {
 	})
 
 	t.Run("ReturnExpectedJsonIfUserExists", func(t *testing.T) {
-		userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
-			return models.NewUser(userInRepoEmail, anyUserPassword)
-		}}
 		registerService = application.NewRegisterService(&userInRepoMock)
 		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
 		response := httptest.NewRecorder()
