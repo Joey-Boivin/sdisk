@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	PingEndpoint = "/ping"
+	PingEndpoint = "GET /ping"
 	response     = "pong"
 )
 
