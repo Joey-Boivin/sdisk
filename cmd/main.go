@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/Joey-Boivin/sdisk-api/api/handlers"
-	"github.com/Joey-Boivin/sdisk-api/api/router"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,12 +39,14 @@ func main() {
 
 	userRepository := repository.NewRamRepository()
 	registerService := application.NewRegisterService(userRepository)
-	userResource := handlers.NewUserHandler(registerService)
+	fetchUserService := application.NewFetchUserService(userRepository)
+	userResource := handlers.NewUserHandler(registerService, fetchUserService)
 	pingResource := handlers.NewPingHandler()
 
-	router := router.NewRouter()
-	router.AddRoute(pingResource.Get, http.MethodGet, handlers.PingEndpoint)
-	router.AddRoute(userResource.Post, http.MethodPost, handlers.UsersEndpoint)
+	router := http.NewServeMux()
+	router.HandleFunc(handlers.PingEndpoint, pingResource.Get)
+	router.HandleFunc(handlers.CreateUserEndpoint, userResource.Post)
+	router.HandleFunc(handlers.GetUserEndpoint, userResource.Get)
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router); err != nil {
 		log.Fatalf("Error trying to start server on %s:%d. %v", conf.Host, conf.Port, err)

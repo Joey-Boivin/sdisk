@@ -3,62 +3,42 @@ package application_test
 import (
 	"github.com/Joey-Boivin/sdisk-api/api/application"
 	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk-api/api/repository/mocks"
 	"testing"
 )
 
-type userRepositoryMock struct {
-	used              bool
-	emailUsed         string
-	passwordUsed      string
-	userAlreadyExists bool
-}
-
-func (r *userRepositoryMock) SaveUser(u *models.User) {
-	r.used = true
-	r.emailUsed = u.GetEmail()
-	r.passwordUsed = u.GetPassword()
-}
-
-func (r *userRepositoryMock) GetUser(id string) *models.User {
-	if r.userAlreadyExists {
-		anyUserPassword := "1"
-		return models.NewUser(id, anyUserPassword)
-	}
-
-	return nil
-}
-
 func TestRegisterService(t *testing.T) {
-	userRepoMock := userRepositoryMock{used: false, userAlreadyExists: false}
-	registerService := application.NewRegisterService(&userRepoMock)
+	userInRepoEmail := "John_doe@test.com"
+	anyUserEmail := "EMAIL@TEST.com"
+	anyUserPassword := "12345"
 
-	t.Run("CreateUserWithCorrectParameters", func(t *testing.T) {
-		userEmail := "EMAIL@TEST.com"
-		userPassword := "12345"
+	userRepoSpy := mocks.RamRepository{}
+	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
+		return models.NewUser(userInRepoEmail, anyUserPassword)
+	}}
+	registerService := application.NewRegisterService(&userRepoSpy)
 
-		err := registerService.RegisterUser(userEmail, userPassword)
+	t.Run("UseRegisterServiceToSaveUser", func(t *testing.T) {
+		err := registerService.RegisterUser(anyUserEmail, anyUserPassword)
 
-		assertStringEquals(t, userEmail, userRepoMock.emailUsed)
-		assertStringEquals(t, userPassword, userRepoMock.passwordUsed)
+		assertTrue(t, userRepoSpy.SaveUserCalled)
 		assertNoError(t, err)
 	})
 
-	t.Run("UseRegisterServiceToSaveUser", func(t *testing.T) {
-		anyUserEmail := "EMAIL@TEST.com"
-		anyUserPassword := "12345"
-
+	t.Run("CreateUserWithCorrectParameters", func(t *testing.T) {
 		err := registerService.RegisterUser(anyUserEmail, anyUserPassword)
 
-		assertTrue(t, userRepoMock.used)
+		emailUsed := userRepoSpy.SaveUserCalledWith.GetEmail()
+		passwordUsed := userRepoSpy.SaveUserCalledWith.GetPassword()
+		assertStringEquals(t, anyUserEmail, emailUsed)
+		assertStringEquals(t, anyUserPassword, passwordUsed)
 		assertNoError(t, err)
 	})
 
 	t.Run("ReturnErrorIfUserAlreadyExists", func(t *testing.T) {
-		userInRepoEmail := "JOHN_DOE@TEST.com"
-		anyPassword := "123"
-		userRepoMock.userAlreadyExists = true
+		registerService = application.NewRegisterService(&userInRepoMock)
 
-		err := registerService.RegisterUser(userInRepoEmail, anyPassword)
+		err := registerService.RegisterUser(userInRepoEmail, anyUserPassword)
 
 		assertError(t, err)
 	})
