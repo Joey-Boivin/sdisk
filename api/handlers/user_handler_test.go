@@ -3,25 +3,28 @@ package handlers_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/handlers"
-	"github.com/Joey-Boivin/sdisk-api/api/models"
-	"github.com/Joey-Boivin/sdisk-api/api/repository/mocks"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Joey-Boivin/sdisk-api/api/application"
+	"github.com/Joey-Boivin/sdisk-api/api/handlers"
+	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk-api/api/repository/mocks"
 )
 
 func TestCreateUser(t *testing.T) {
 	validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
+	anySizeInMib := 1024
 	userRepoDummy := mocks.RamRepository{}
 	registerService := application.NewRegisterService(&userRepoDummy)
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)
-	userHandler := handlers.NewUserHandler(registerService, fetchUserService)
+	createDiskService := application.NewCreateDiskService(&userRepoDummy, uint64(anySizeInMib))
+	userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
 		return models.NewUser(userInRepoEmail, anyUserPassword)
 	}}
@@ -32,7 +35,7 @@ func TestCreateUser(t *testing.T) {
 		reader := strings.NewReader(badRequest)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Post(response, postRequest)
+		userHandler.CreateUserResource(response, postRequest)
 
 		got := response.Code
 		want := http.StatusBadRequest
@@ -45,7 +48,7 @@ func TestCreateUser(t *testing.T) {
 		reader := strings.NewReader(badRequest)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Post(response, postRequest)
+		userHandler.CreateUserResource(response, postRequest)
 
 		assertNoSave(t, userRepoDummy)
 	})
@@ -55,7 +58,7 @@ func TestCreateUser(t *testing.T) {
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Post(response, postRequest)
+		userHandler.CreateUserResource(response, postRequest)
 
 		got := response.Code
 		want := http.StatusCreated
@@ -67,20 +70,20 @@ func TestCreateUser(t *testing.T) {
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Post(response, postRequest)
+		userHandler.CreateUserResource(response, postRequest)
 
 		assertSave(t, userRepoDummy)
 	})
 
 	t.Run("ReturnHttpForbiddenIfUserAlreadyExists", func(t *testing.T) {
 		registerService = application.NewRegisterService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Post(response, postRequest)
+		userHandler.CreateUserResource(response, postRequest)
 
 		got := response.Code
 		want := http.StatusForbidden
@@ -89,12 +92,12 @@ func TestCreateUser(t *testing.T) {
 
 	t.Run("DoNotOverrideExistingUser", func(t *testing.T) {
 		registerService = application.NewRegisterService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Post(response, postRequest)
+		userHandler.CreateUserResource(response, postRequest)
 
 		assertNoSave(t, userInRepoMock)
 	})
@@ -103,10 +106,12 @@ func TestCreateUser(t *testing.T) {
 func TestGetUser(t *testing.T) {
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
+	anySizeInMib := 1024
 	userRepoDummy := mocks.RamRepository{}
 	registerService := application.NewRegisterService(&userRepoDummy)
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)
-	userHandler := handlers.NewUserHandler(registerService, fetchUserService)
+	createDiskService := application.NewCreateDiskService(&userRepoDummy, uint64(anySizeInMib))
+	userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
 		return models.NewUser(userInRepoEmail, anyUserPassword)
 	}}
@@ -116,7 +121,7 @@ func TestGetUser(t *testing.T) {
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.CreateUserEndpoint, reader)
 
-		userHandler.Get(response, getRequest)
+		userHandler.CreateUserResource(response, getRequest)
 
 		got := response.Code
 		want := http.StatusNotFound
@@ -125,13 +130,13 @@ func TestGetUser(t *testing.T) {
 
 	t.Run("ReturnHttpOkIfUserExists", func(t *testing.T) {
 		fetchUserService = application.NewFetchUserService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
 		getRequest.SetPathValue("id", userInRepoEmail)
 
-		userHandler.Get(response, getRequest)
+		userHandler.GetUserResource(response, getRequest)
 
 		got := response.Code
 		want := http.StatusOK
@@ -140,12 +145,12 @@ func TestGetUser(t *testing.T) {
 
 	t.Run("ReturnExpectedJsonIfUserExists", func(t *testing.T) {
 		registerService = application.NewRegisterService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
 
-		userHandler.Get(response, getRequest)
+		userHandler.GetUserResource(response, getRequest)
 
 		got := response.Body
 		want := createUserJson(userInRepoEmail)
