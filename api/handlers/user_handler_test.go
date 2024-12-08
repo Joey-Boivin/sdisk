@@ -11,8 +11,8 @@ import (
 
 	"github.com/Joey-Boivin/sdisk-api/api/application"
 	"github.com/Joey-Boivin/sdisk-api/api/handlers"
+	"github.com/Joey-Boivin/sdisk-api/api/mocks"
 	"github.com/Joey-Boivin/sdisk-api/api/models"
-	"github.com/Joey-Boivin/sdisk-api/api/repository/mocks"
 )
 
 func TestCreateUser(t *testing.T) {
@@ -20,12 +20,12 @@ func TestCreateUser(t *testing.T) {
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
 	anySizeInMib := 1024
-	userRepoDummy := mocks.RamRepository{}
+	userRepoDummy := mocks.UserRepositoryMock{}
 	registerService := application.NewRegisterService(&userRepoDummy)
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)
 	createDiskService := application.NewCreateDiskService(&userRepoDummy, uint64(anySizeInMib))
 	userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
-	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
+	userInRepoMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
 		return models.NewUser(userInRepoEmail, anyUserPassword)
 	}}
 
@@ -107,12 +107,12 @@ func TestGetUser(t *testing.T) {
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
 	anySizeInMib := 1024
-	userRepoDummy := mocks.RamRepository{}
+	userRepoDummy := mocks.UserRepositoryMock{}
 	registerService := application.NewRegisterService(&userRepoDummy)
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)
 	createDiskService := application.NewCreateDiskService(&userRepoDummy, uint64(anySizeInMib))
 	userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
-	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
+	userInRepoMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
 		return models.NewUser(userInRepoEmail, anyUserPassword)
 	}}
 
@@ -121,7 +121,7 @@ func TestGetUser(t *testing.T) {
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.CreateUserEndpoint, reader)
 
-		userHandler.CreateUserResource(response, getRequest)
+		userHandler.GetUserResource(response, getRequest)
 
 		got := response.Code
 		want := http.StatusNotFound
@@ -158,7 +158,79 @@ func TestGetUser(t *testing.T) {
 	})
 }
 
-func assertNoSave(t *testing.T, userRepoMock mocks.RamRepository) {
+func TestCreateDiskResource(t *testing.T) {
+	userInRepoEmail := "John_doe@test.com"
+	anyUserPassword := "12345"
+	anySizeInMib := 1024
+	dummyUserRepository := mocks.UserRepositoryMock{}
+	t.Run("IfUserHasADiskReturnHttpStatusForbidden", func(t *testing.T) {
+		userInRepository := models.NewUser(userInRepoEmail, anyUserPassword)
+		repoWithUserMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+			return userInRepository
+		}}
+		existingDisk := models.NewDisk(uint64(anySizeInMib))
+		userInRepository.AddDisk(existingDisk)
+		registerService := application.NewRegisterService(&repoWithUserMock)
+		fetchUserService := application.NewFetchUserService(&dummyUserRepository)
+		createDiskService := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMib))
+		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		response := httptest.NewRecorder()
+		reader := strings.NewReader("")
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
+		postRequest.SetPathValue("id", userInRepoEmail)
+
+		userHandler.CreateDiskResource(response, postRequest)
+
+		got := response.Code
+		want := http.StatusForbidden
+		assertStatus(t, got, want)
+	})
+
+	t.Run("IfUserDoesNotExistReturnHttpNotFound", func(t *testing.T) {
+		registerService := application.NewRegisterService(&dummyUserRepository)
+		fetchUserService := application.NewFetchUserService(&dummyUserRepository)
+		createDiskService := application.NewCreateDiskService(&dummyUserRepository, uint64(anySizeInMib))
+		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		response := httptest.NewRecorder()
+		reader := strings.NewReader("")
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
+		postRequest.SetPathValue("id", userInRepoEmail)
+
+		userHandler.CreateDiskResource(response, postRequest)
+
+		got := response.Code
+		want := http.StatusNotFound
+		assertStatus(t, got, want)
+	})
+
+	t.Run("IfUnknownErrorThenReturnHttpStatusInternalServerError", func(t *testing.T) {
+
+	})
+
+	t.Run("IfDiskCreatedSuccessReturnHttpStatusCreated", func(t *testing.T) {
+		userInRepository := models.NewUser(userInRepoEmail, anyUserPassword)
+		repoWithUserMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+			return userInRepository
+		}}
+		registerService := application.NewRegisterService(&dummyUserRepository)
+		fetchUserService := application.NewFetchUserService(&dummyUserRepository)
+		createDiskService := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMib))
+		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		response := httptest.NewRecorder()
+		reader := strings.NewReader("")
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
+		postRequest.SetPathValue("id", userInRepoEmail)
+
+		userHandler.CreateDiskResource(response, postRequest)
+
+		got := response.Code
+		want := http.StatusCreated
+		assertStatus(t, got, want)
+	})
+
+}
+
+func assertNoSave(t *testing.T, userRepoMock mocks.UserRepositoryMock) {
 	t.Helper()
 
 	if userRepoMock.SaveUserCalled {
@@ -166,7 +238,7 @@ func assertNoSave(t *testing.T, userRepoMock mocks.RamRepository) {
 	}
 }
 
-func assertSave(t *testing.T, userRepoMock mocks.RamRepository) {
+func assertSave(t *testing.T, userRepoMock mocks.UserRepositoryMock) {
 	t.Helper()
 
 	if !userRepoMock.SaveUserCalled {

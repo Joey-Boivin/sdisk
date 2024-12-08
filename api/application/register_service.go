@@ -2,13 +2,14 @@ package application
 
 import (
 	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk-api/api/ports"
 )
 
 type RegisterService struct {
-	userRepository models.UserRepository
+	userRepository ports.UserRepository
 }
 
-func NewRegisterService(userRepository models.UserRepository) *RegisterService {
+func NewRegisterService(userRepository ports.UserRepository) *RegisterService {
 	return &RegisterService{
 		userRepository: userRepository,
 	}

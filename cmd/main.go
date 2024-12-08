@@ -2,23 +2,25 @@ package main
 
 import (
 	"fmt"
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/repository"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/Joey-Boivin/sdisk-api/api/application"
+	"github.com/Joey-Boivin/sdisk-api/api/repository"
 
 	"github.com/Joey-Boivin/sdisk-api/api/handlers"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	apiConfigPath = "./configs/api.yml"
+	apiConfigPath = "../configs/api.yml"
 )
 
 type ApiConfig struct {
-	Host string `yaml:"host"`
-	Port uint   `yaml:"port"`
+	Host     string `yaml:"host"`
+	Port     uint   `yaml:"port"`
+	DiskSize uint   `yaml:"diskSize"`
 }
 
 func main() {
@@ -40,13 +42,16 @@ func main() {
 	userRepository := repository.NewRamRepository()
 	registerService := application.NewRegisterService(userRepository)
 	fetchUserService := application.NewFetchUserService(userRepository)
-	userResource := handlers.NewUserHandler(registerService, fetchUserService)
+	createDiskService := application.NewCreateDiskService(userRepository, uint64(conf.DiskSize))
+	userResource := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 	pingResource := handlers.NewPingHandler()
 
 	router := http.NewServeMux()
 	router.HandleFunc(handlers.PingEndpoint, pingResource.Get)
-	router.HandleFunc(handlers.CreateUserEndpoint, userResource.Post)
-	router.HandleFunc(handlers.GetUserEndpoint, userResource.Get)
+	router.HandleFunc(handlers.CreateUserEndpoint, userResource.CreateUserResource)
+	router.HandleFunc(handlers.GetUserEndpoint, userResource.GetUserResource)
+	router.HandleFunc(handlers.CreateDiskEndpoint, userResource.CreateDiskResource)
+	//router.HandleFunc("POST /users/{id}/disk", userResource.TestingResource)
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router); err != nil {
 		log.Fatalf("Error trying to start server on %s:%d. %v", conf.Host, conf.Port, err)

@@ -9,3 +9,7 @@ func NewDisk(size uint64) *Disk {
 		totalSize: size,
 	}
 }
+
+func (d *Disk) GetSpaceLeft() uint64 {
+	return d.totalSize
+}

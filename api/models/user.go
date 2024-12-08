@@ -1,10 +1,5 @@
 package models
 
-type UserRepository interface {
-	SaveUser(u *User)
-	GetUser(id string) *User
-}
-
 type User struct {
 	email    string
 	password string
@@ -25,6 +20,10 @@ func (u *User) GetEmail() string {
 
 func (u *User) GetPassword() string {
 	return u.password
+}
+
+func (u *User) GetDiskSpaceLeft() uint64 {
+	return u.disk.GetSpaceLeft()
 }
 
 func (u *User) AddDisk(d *Disk) error {

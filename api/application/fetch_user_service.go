@@ -2,13 +2,14 @@ package application
 
 import (
 	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk-api/api/ports"
 )
 
 type FetchUserService struct {
-	userRepository models.UserRepository
+	userRepository ports.UserRepository
 }
 
-func NewFetchUserService(userRepository models.UserRepository) *FetchUserService {
+func NewFetchUserService(userRepository ports.UserRepository) *FetchUserService {
 	return &FetchUserService{
 		userRepository: userRepository,
 	}
