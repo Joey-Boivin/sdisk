@@ -188,7 +188,7 @@ func TestGetUser(t *testing.T) {
 	t.Run("IncludeDiskSizeIfUserHasDisk", func(t *testing.T) {
 		setup()
 		anyDisk := models.NewDisk(anySizeInMiB)
-		userInRepository.AddDisk(anyDisk)
+		_ = userInRepository.AddDisk(anyDisk)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
