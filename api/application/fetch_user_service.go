@@ -1,19 +1,15 @@
 package application
 
 import (
-	"fmt"
 	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk-api/api/ports"
 )
 
-func CreateErrorUserDoesNotExist(email string) error {
-	return fmt.Errorf("user with email %s does not exist", email)
-}
-
 type FetchUserService struct {
-	userRepository models.UserRepository
+	userRepository ports.UserRepository
 }
 
-func NewFetchUserService(userRepository models.UserRepository) *FetchUserService {
+func NewFetchUserService(userRepository ports.UserRepository) *FetchUserService {
 	return &FetchUserService{
 		userRepository: userRepository,
 	}
@@ -22,7 +18,7 @@ func NewFetchUserService(userRepository models.UserRepository) *FetchUserService
 func (fetchUserService *FetchUserService) FetchUser(email string) (models.User, error) {
 	user := fetchUserService.userRepository.GetUser(email)
 	if user == nil {
-		return models.User{}, CreateErrorUserDoesNotExist(email)
+		return models.User{}, &ErrUserDoesNotExist{}
 	}
 
 	return *user, nil

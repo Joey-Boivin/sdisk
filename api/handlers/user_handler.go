@@ -2,18 +2,22 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/Joey-Boivin/sdisk-api/api/application"
 	"net/http"
+
+	"github.com/Joey-Boivin/sdisk-api/api/application"
+	"github.com/Joey-Boivin/sdisk-api/api/models"
 )
 
 const (
 	CreateUserEndpoint = "POST /users"
 	GetUserEndpoint    = "GET /users/{id}"
+	CreateDiskEndpoint = "POST /users/{id}/disk"
 )
 
 type UserHandler struct {
-	registerService  *application.RegisterService
-	fetchUserService *application.FetchUserService
+	registerService   *application.RegisterService
+	fetchUserService  *application.FetchUserService
+	createDiskService *application.CreateDiskService
 }
 
 type RegisterRequest struct {
@@ -22,17 +26,19 @@ type RegisterRequest struct {
 }
 
 type FetchUserResponse struct {
-	Email string `json:"email"`
+	Email     string `json:"email"`
+	DiskSpace int    `json:"diskSpaceInMiB,omitempty"`
 }
 
-func NewUserHandler(registerService *application.RegisterService, fetchUserService *application.FetchUserService) *UserHandler {
+func NewUserHandler(registerService *application.RegisterService, fetchUserService *application.FetchUserService, createDiskService *application.CreateDiskService) *UserHandler {
 	return &UserHandler{
-		registerService:  registerService,
-		fetchUserService: fetchUserService,
+		registerService:   registerService,
+		fetchUserService:  fetchUserService,
+		createDiskService: createDiskService,
 	}
 }
 
-func (r *UserHandler) Post(writer http.ResponseWriter, req *http.Request) {
+func (h *UserHandler) CreateUserResource(writer http.ResponseWriter, req *http.Request) {
 	var registerRequest RegisterRequest
 
 	err := json.NewDecoder(req.Body).Decode(&registerRequest)
@@ -41,7 +47,7 @@ func (r *UserHandler) Post(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = r.registerService.RegisterUser(registerRequest.Email, registerRequest.Password)
+	err = h.registerService.RegisterUser(registerRequest.Email, registerRequest.Password)
 	if err != nil {
 		writer.WriteHeader(http.StatusForbidden)
 		return
@@ -50,15 +56,22 @@ func (r *UserHandler) Post(writer http.ResponseWriter, req *http.Request) {
 	writer.WriteHeader(http.StatusCreated)
 }
 
-func (r *UserHandler) Get(writer http.ResponseWriter, req *http.Request) {
+func (h *UserHandler) GetUserResource(writer http.ResponseWriter, req *http.Request) {
 	email := req.PathValue("id")
-	user, err := r.fetchUserService.FetchUser(email)
+	user, err := h.fetchUserService.FetchUser(email)
 	if err != nil {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	resp := FetchUserResponse{Email: user.GetEmail()}
+	space, err := user.GetDiskSpaceLeft()
+	var resp FetchUserResponse
+
+	if err != nil {
+		resp = FetchUserResponse{Email: user.GetEmail()}
+	} else {
+		resp = FetchUserResponse{Email: user.GetEmail(), DiskSpace: int(space)}
+	}
 
 	data, err := json.Marshal(resp)
 
@@ -74,4 +87,30 @@ func (r *UserHandler) Get(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
+}
+
+func (h *UserHandler) CreateDiskResource(writer http.ResponseWriter, req *http.Request) {
+	email := req.PathValue("id")
+
+	err := h.createDiskService.CreateDisk(email)
+
+	if err != nil {
+		switch err.(type) {
+		default:
+
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+
+		case *models.ErrUserAlreadyHasADisk:
+			writer.WriteHeader(http.StatusForbidden)
+			return
+
+		case *application.ErrUserDoesNotExist:
+
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+	}
+
+	writer.WriteHeader(http.StatusCreated)
 }

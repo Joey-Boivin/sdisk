@@ -1,19 +1,15 @@
 package application
 
 import (
-	"fmt"
 	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk-api/api/ports"
 )
 
-func CreateErrorUserAlreadyExists(email string) error {
-	return fmt.Errorf("user already exists for the email address %s", email)
-}
-
 type RegisterService struct {
-	userRepository models.UserRepository
+	userRepository ports.UserRepository
 }
 
-func NewRegisterService(userRepository models.UserRepository) *RegisterService {
+func NewRegisterService(userRepository ports.UserRepository) *RegisterService {
 	return &RegisterService{
 		userRepository: userRepository,
 	}
@@ -23,7 +19,7 @@ func (registerService *RegisterService) RegisterUser(email string, password stri
 	user := registerService.userRepository.GetUser(email)
 
 	if user != nil {
-		return CreateErrorUserAlreadyExists(email)
+		return &ErrUserAlreadyExists{email}
 	}
 
 	user = models.NewUser(email, password)

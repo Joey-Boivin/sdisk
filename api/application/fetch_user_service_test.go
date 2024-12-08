@@ -1,10 +1,11 @@
 package application_test
 
 import (
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/models"
-	"github.com/Joey-Boivin/sdisk-api/api/repository/mocks"
 	"testing"
+
+	"github.com/Joey-Boivin/sdisk-api/api/application"
+	"github.com/Joey-Boivin/sdisk-api/api/mocks"
+	"github.com/Joey-Boivin/sdisk-api/api/models"
 )
 
 func TestNewFetchUserService(t *testing.T) {
@@ -12,8 +13,8 @@ func TestNewFetchUserService(t *testing.T) {
 	anyUserEmail := "EMAIL@TEST.com"
 	anyUserPassword := "12345"
 
-	userRepoDummy := mocks.RamRepository{}
-	userInRepoMock := mocks.RamRepository{FnGetUser: func(id string) *models.User {
+	userRepoDummy := mocks.UserRepositoryMock{}
+	userInRepoMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
 		return models.NewUser(userInRepoEmail, anyUserPassword)
 	}}
 	fetchUserService := application.NewFetchUserService(&userRepoDummy)

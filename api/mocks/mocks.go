@@ -2,7 +2,7 @@ package mocks
 
 import "github.com/Joey-Boivin/sdisk-api/api/models"
 
-type RamRepository struct {
+type UserRepositoryMock struct {
 	FnSaveUser         func(u *models.User)
 	SaveUserCalled     bool
 	SaveUserCalledWith *models.User
@@ -12,7 +12,7 @@ type RamRepository struct {
 	GetUserCalledWith string
 }
 
-func (r *RamRepository) SaveUser(u *models.User) {
+func (r *UserRepositoryMock) SaveUser(u *models.User) {
 	r.SaveUserCalled = true
 	r.SaveUserCalledWith = u
 
@@ -21,7 +21,7 @@ func (r *RamRepository) SaveUser(u *models.User) {
 	}
 }
 
-func (r *RamRepository) GetUser(id string) *models.User {
+func (r *UserRepositoryMock) GetUser(id string) *models.User {
 	r.GetUserCalled = true
 	r.GetUserCalledWith = id
 

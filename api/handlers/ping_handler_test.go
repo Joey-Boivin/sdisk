@@ -18,7 +18,7 @@ func TestPingHandler(t *testing.T) {
 		response := httptest.NewRecorder()
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.PingEndpoint, nil)
 
-		pingHandler.Get(response, getRequest)
+		pingHandler.Ping(response, getRequest)
 
 		got := response.Code
 		want := http.StatusOK
@@ -29,7 +29,7 @@ func TestPingHandler(t *testing.T) {
 		response := httptest.NewRecorder()
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.PingEndpoint, nil)
 
-		pingHandler.Get(response, getRequest)
+		pingHandler.Ping(response, getRequest)
 
 		got := response.Body.Bytes()
 		want := []byte("pong")
