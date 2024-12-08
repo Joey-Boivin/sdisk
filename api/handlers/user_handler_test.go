@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -172,6 +173,30 @@ func TestGetUser(t *testing.T) {
 		want := createUserJson(userInRepoEmail)
 		assertExpectedJson(t, *got, want)
 	})
+
+	t.Run("DontIncludeDiskSizeIfUserHasNoDisk", func(t *testing.T) {
+		setup()
+		response := httptest.NewRecorder()
+		reader := strings.NewReader("")
+		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
+
+		userHandler.GetUserResource(response, getRequest)
+
+		assertResponseHasNoDiskSize(t, response)
+	})
+
+	t.Run("IncludeDiskSizeIfUserHasDisk", func(t *testing.T) {
+		setup()
+		anyDisk := models.NewDisk(anySizeInMiB)
+		userInRepository.AddDisk(anyDisk)
+		response := httptest.NewRecorder()
+		reader := strings.NewReader("")
+		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
+
+		userHandler.GetUserResource(response, getRequest)
+
+		assertResponseHasDiskSize(t, response)
+	})
 }
 
 func TestCreateDiskResource(t *testing.T) {
@@ -207,10 +232,6 @@ func TestCreateDiskResource(t *testing.T) {
 		assertStatus(t, got, want)
 	})
 
-	t.Run("IfUnknownErrorThenReturnHttpStatusInternalServerError", func(t *testing.T) {
-
-	})
-
 	t.Run("IfDiskCreatedSuccessReturnHttpStatusCreated", func(t *testing.T) {
 		setup()
 		response := httptest.NewRecorder()
@@ -244,8 +265,39 @@ func assertSave(t *testing.T, userRepoMock mocks.UserRepositoryMock) {
 }
 
 func assertExpectedJson(t *testing.T, got bytes.Buffer, want bytes.Buffer) {
+	t.Helper()
+
 	if reflect.DeepEqual(got.Bytes(), want.Bytes()) {
 		t.Fatalf("Expected the following json:\n%s\nBut got:\n%s", got.String(), want.String())
+	}
+}
+
+func responseHasDiskSize(t *testing.T, response *httptest.ResponseRecorder) bool {
+	t.Helper()
+
+	var responseBody = make(map[string]interface{})
+	err := json.Unmarshal(response.Body.Bytes(), &responseBody)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal response body: %v", err)
+	}
+	_, exists := responseBody["diskSpaceInMiB"]
+
+	return exists
+}
+
+func assertResponseHasNoDiskSize(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+
+	if responseHasDiskSize(t, response) {
+		t.Fatalf("Expected no disk size field but there was one")
+	}
+}
+
+func assertResponseHasDiskSize(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+
+	if !responseHasDiskSize(t, response) {
+		t.Fatalf("Expected disk size field but there was none")
 	}
 }
 

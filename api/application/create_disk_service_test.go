@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateDisk(t *testing.T) {
-	anySizeInMiB := 1024
+	anySizeInMiB := uint64(1024)
 	anyUserEmail := "EMAIL@TEST.com"
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
@@ -24,7 +24,7 @@ func TestCreateDisk(t *testing.T) {
 	}}
 
 	t.Run("ReturnErrUserDoesNotExist", func(t *testing.T) {
-		service := application.NewCreateDiskService(&repoWithoutUserMock, uint64(anySizeInMiB))
+		service := application.NewCreateDiskService(&repoWithoutUserMock, anySizeInMiB)
 
 		err := service.CreateDisk(anyUserEmail)
 
@@ -32,12 +32,12 @@ func TestCreateDisk(t *testing.T) {
 	})
 
 	t.Run("AddNewDiskWithCorrectSize", func(t *testing.T) {
-		specifiedDiskSize := 2048
-		service := application.NewCreateDiskService(&repoWithUserMock, uint64(specifiedDiskSize))
+		specifiedDiskSize := uint64(2048)
+		service := application.NewCreateDiskService(&repoWithUserMock, specifiedDiskSize)
 
 		_ = service.CreateDisk(anyUserEmail)
 
-		createdDiskSize := userInRepository.GetDiskSpaceLeft()
+		createdDiskSize, _ := userInRepository.GetDiskSpaceLeft()
 		assertEquals(t, createdDiskSize, uint64(specifiedDiskSize))
 	})
 
