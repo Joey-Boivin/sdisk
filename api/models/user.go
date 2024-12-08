@@ -22,8 +22,12 @@ func (u *User) GetPassword() string {
 	return u.password
 }
 
-func (u *User) GetDiskSpaceLeft() uint64 {
-	return u.disk.GetSpaceLeft()
+func (u *User) GetDiskSpaceLeft() (uint64, error) {
+	if u.disk == nil {
+		return 0, &ErrUserHasNoDisk{}
+	}
+
+	return u.disk.GetSpaceLeft(), nil
 }
 
 func (u *User) AddDisk(d *Disk) error {

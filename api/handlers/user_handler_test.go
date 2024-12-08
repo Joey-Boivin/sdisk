@@ -15,21 +15,40 @@ import (
 	"github.com/Joey-Boivin/sdisk-api/api/models"
 )
 
+var userInRepoEmail = "John_doe@test.com"
+var anyUserPassword = "12345"
+var anySizeInMiB = uint64(1024)
+
+var userInRepository = &models.User{}
+
+var registerService = &application.RegisterService{}
+var fetchUserService = &application.FetchUserService{}
+var createDiskService = &application.CreateDiskService{}
+
+var userHandler = &handlers.UserHandler{}
+
+var userRepoEmptyMock = mocks.UserRepositoryMock{}
+var userRepoWithUserMock = mocks.UserRepositoryMock{}
+
+func setup() {
+	userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
+	userRepoEmptyMock = mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+		return nil
+	}}
+	userRepoWithUserMock = mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+		return userInRepository
+	}}
+	registerService = application.NewRegisterService(&userRepoWithUserMock)
+	fetchUserService = application.NewFetchUserService(&userRepoWithUserMock)
+	createDiskService = application.NewCreateDiskService(&userRepoWithUserMock, anySizeInMiB)
+	userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+}
+
 func TestCreateUser(t *testing.T) {
 	validUserJson := "{\"email\": \"EMAIL@TEST.com\", \"password\": \"12345\"}"
-	userInRepoEmail := "John_doe@test.com"
-	anyUserPassword := "12345"
-	anySizeInMib := 1024
-	userRepoDummy := mocks.UserRepositoryMock{}
-	registerService := application.NewRegisterService(&userRepoDummy)
-	fetchUserService := application.NewFetchUserService(&userRepoDummy)
-	createDiskService := application.NewCreateDiskService(&userRepoDummy, uint64(anySizeInMib))
-	userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
-	userInRepoMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
-		return models.NewUser(userInRepoEmail, anyUserPassword)
-	}}
 
 	t.Run("ReturnHttpBadRequestIfParseError", func(t *testing.T) {
+		setup()
 		response := httptest.NewRecorder()
 		badRequest := "{"
 		reader := strings.NewReader(badRequest)
@@ -43,6 +62,9 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("DoNotSaveAUserIfParseError", func(t *testing.T) {
+		setup()
+		registerService = application.NewRegisterService(&userRepoEmptyMock)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		badRequest := "{"
 		reader := strings.NewReader(badRequest)
@@ -50,10 +72,13 @@ func TestCreateUser(t *testing.T) {
 
 		userHandler.CreateUserResource(response, postRequest)
 
-		assertNoSave(t, userRepoDummy)
+		assertNoSave(t, userRepoEmptyMock)
 	})
 
 	t.Run("ReturnHttpCreatedIfNoErrors", func(t *testing.T) {
+		setup()
+		registerService = application.NewRegisterService(&userRepoEmptyMock)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
@@ -66,18 +91,20 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("UserSavedIfNoErrors", func(t *testing.T) {
+		setup()
+		registerService = application.NewRegisterService(&userRepoEmptyMock)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
 		userHandler.CreateUserResource(response, postRequest)
 
-		assertSave(t, userRepoDummy)
+		assertSave(t, userRepoEmptyMock)
 	})
 
 	t.Run("ReturnHttpForbiddenIfUserAlreadyExists", func(t *testing.T) {
-		registerService = application.NewRegisterService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		setup()
 		response := httptest.NewRecorder()
 
 		reader := strings.NewReader(validUserJson)
@@ -91,32 +118,23 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("DoNotOverrideExistingUser", func(t *testing.T) {
-		registerService = application.NewRegisterService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		setup()
 		response := httptest.NewRecorder()
 		reader := strings.NewReader(validUserJson)
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateUserEndpoint, reader)
 
 		userHandler.CreateUserResource(response, postRequest)
 
-		assertNoSave(t, userInRepoMock)
+		assertNoSave(t, userRepoWithUserMock)
 	})
 }
 
 func TestGetUser(t *testing.T) {
-	userInRepoEmail := "John_doe@test.com"
-	anyUserPassword := "12345"
-	anySizeInMib := 1024
-	userRepoDummy := mocks.UserRepositoryMock{}
-	registerService := application.NewRegisterService(&userRepoDummy)
-	fetchUserService := application.NewFetchUserService(&userRepoDummy)
-	createDiskService := application.NewCreateDiskService(&userRepoDummy, uint64(anySizeInMib))
-	userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
-	userInRepoMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
-		return models.NewUser(userInRepoEmail, anyUserPassword)
-	}}
 
 	t.Run("ReturnHttpNotFoundIfUserDoesNotExist", func(t *testing.T) {
+		setup()
+		fetchUserService = application.NewFetchUserService(&userRepoEmptyMock)
+		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.CreateUserEndpoint, reader)
@@ -129,8 +147,7 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("ReturnHttpOkIfUserExists", func(t *testing.T) {
-		fetchUserService = application.NewFetchUserService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		setup()
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
@@ -144,8 +161,7 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("ReturnExpectedJsonIfUserExists", func(t *testing.T) {
-		registerService = application.NewRegisterService(&userInRepoMock)
-		userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		setup()
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
@@ -159,21 +175,10 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestCreateDiskResource(t *testing.T) {
-	userInRepoEmail := "John_doe@test.com"
-	anyUserPassword := "12345"
-	anySizeInMib := 1024
-	dummyUserRepository := mocks.UserRepositoryMock{}
 	t.Run("IfUserHasADiskReturnHttpStatusForbidden", func(t *testing.T) {
-		userInRepository := models.NewUser(userInRepoEmail, anyUserPassword)
-		repoWithUserMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
-			return userInRepository
-		}}
-		existingDisk := models.NewDisk(uint64(anySizeInMib))
-		userInRepository.AddDisk(existingDisk)
-		registerService := application.NewRegisterService(&repoWithUserMock)
-		fetchUserService := application.NewFetchUserService(&dummyUserRepository)
-		createDiskService := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMib))
-		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		setup()
+		existingDisk := models.NewDisk(uint64(anySizeInMiB))
+		_ = userInRepository.AddDisk(existingDisk)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
@@ -187,9 +192,8 @@ func TestCreateDiskResource(t *testing.T) {
 	})
 
 	t.Run("IfUserDoesNotExistReturnHttpNotFound", func(t *testing.T) {
-		registerService := application.NewRegisterService(&dummyUserRepository)
-		fetchUserService := application.NewFetchUserService(&dummyUserRepository)
-		createDiskService := application.NewCreateDiskService(&dummyUserRepository, uint64(anySizeInMib))
+		setup()
+		createDiskService := application.NewCreateDiskService(&userRepoEmptyMock, anySizeInMiB)
 		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
@@ -208,14 +212,7 @@ func TestCreateDiskResource(t *testing.T) {
 	})
 
 	t.Run("IfDiskCreatedSuccessReturnHttpStatusCreated", func(t *testing.T) {
-		userInRepository := models.NewUser(userInRepoEmail, anyUserPassword)
-		repoWithUserMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
-			return userInRepository
-		}}
-		registerService := application.NewRegisterService(&dummyUserRepository)
-		fetchUserService := application.NewFetchUserService(&dummyUserRepository)
-		createDiskService := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMib))
-		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		setup()
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)

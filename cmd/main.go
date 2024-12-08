@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	apiConfigPath = "../configs/api.yml"
+	apiConfigPath = "./configs/api.yml"
 )
 
 type ApiConfig struct {
@@ -47,11 +47,10 @@ func main() {
 	pingResource := handlers.NewPingHandler()
 
 	router := http.NewServeMux()
-	router.HandleFunc(handlers.PingEndpoint, pingResource.Get)
+	router.HandleFunc(handlers.PingEndpoint, pingResource.Ping)
 	router.HandleFunc(handlers.CreateUserEndpoint, userResource.CreateUserResource)
 	router.HandleFunc(handlers.GetUserEndpoint, userResource.GetUserResource)
 	router.HandleFunc(handlers.CreateDiskEndpoint, userResource.CreateDiskResource)
-	//router.HandleFunc("POST /users/{id}/disk", userResource.TestingResource)
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.Host, conf.Port), router); err != nil {
 		log.Fatalf("Error trying to start server on %s:%d. %v", conf.Host, conf.Port, err)

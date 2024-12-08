@@ -7,13 +7,13 @@ import (
 
 type CreateDiskService struct {
 	userRepository ports.UserRepository
-	sizeInMib      uint64
+	sizeInMiB      uint64
 }
 
 func NewCreateDiskService(userRepository ports.UserRepository, sizeInMib uint64) *CreateDiskService {
 	return &CreateDiskService{
 		userRepository: userRepository,
-		sizeInMib:      sizeInMib,
+		sizeInMiB:      sizeInMib,
 	}
 }
 
@@ -23,7 +23,7 @@ func (c *CreateDiskService) CreateDisk(email string) error {
 		return &ErrUserDoesNotExist{}
 	}
 
-	d := models.NewDisk(c.sizeInMib)
+	d := models.NewDisk(c.sizeInMiB)
 	err := u.AddDisk(d)
 	return err
 }

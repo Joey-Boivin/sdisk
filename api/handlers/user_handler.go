@@ -26,7 +26,8 @@ type RegisterRequest struct {
 }
 
 type FetchUserResponse struct {
-	Email string `json:"email"`
+	Email     string `json:"email"`
+	DiskSpace int    `json:"diskSpaceInMiB,omitempty"`
 }
 
 func NewUserHandler(registerService *application.RegisterService, fetchUserService *application.FetchUserService, createDiskService *application.CreateDiskService) *UserHandler {
@@ -63,7 +64,14 @@ func (h *UserHandler) GetUserResource(writer http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	resp := FetchUserResponse{Email: user.GetEmail()}
+	space, err := user.GetDiskSpaceLeft()
+	var resp FetchUserResponse
+
+	if err != nil {
+		resp = FetchUserResponse{Email: user.GetEmail()}
+	} else {
+		resp = FetchUserResponse{Email: user.GetEmail(), DiskSpace: int(space)}
+	}
 
 	data, err := json.Marshal(resp)
 
