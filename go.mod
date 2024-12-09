@@ -1,4 +1,4 @@
-module github.com/Joey-Boivin/sdisk-api
+module github.com/Joey-Boivin/sdisk
 
 go 1.22.5
 

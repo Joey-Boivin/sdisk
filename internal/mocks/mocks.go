@@ -1,6 +1,6 @@
 package mocks
 
-import "github.com/Joey-Boivin/sdisk-api/api/models"
+import "github.com/Joey-Boivin/sdisk/internal/models"
 
 type UserRepositoryMock struct {
 	FnSaveUser         func(u *models.User)

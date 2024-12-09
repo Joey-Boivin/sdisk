@@ -3,7 +3,7 @@ package models_test
 import (
 	"testing"
 
-	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
 func TestAddDisk(t *testing.T) {

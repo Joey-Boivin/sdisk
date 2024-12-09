@@ -1,8 +1,8 @@
 package application
 
 import (
-	"github.com/Joey-Boivin/sdisk-api/api/models"
-	"github.com/Joey-Boivin/sdisk-api/api/ports"
+	"github.com/Joey-Boivin/sdisk/internal/models"
+	"github.com/Joey-Boivin/sdisk/internal/ports"
 )
 
 type RegisterService struct {
