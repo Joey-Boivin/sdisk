@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk/internal/application"
+	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
 const (

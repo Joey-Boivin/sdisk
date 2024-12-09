@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/repository"
-
-	"github.com/Joey-Boivin/sdisk-api/api/handlers"
+	"github.com/Joey-Boivin/sdisk-api/internal/application"
+	"github.com/Joey-Boivin/sdisk-api/internal/handlers"
+	"github.com/Joey-Boivin/sdisk-api/internal/repository"
 	"gopkg.in/yaml.v3"
 )
 

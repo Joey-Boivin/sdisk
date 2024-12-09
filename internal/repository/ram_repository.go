@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
 type RamRepository struct {

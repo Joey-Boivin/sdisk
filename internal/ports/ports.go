@@ -1,6 +1,6 @@
 package ports
 
-import "github.com/Joey-Boivin/sdisk-api/api/models"
+import "github.com/Joey-Boivin/sdisk/internal/models"
 
 type UserRepository interface {
 	SaveUser(u *models.User)

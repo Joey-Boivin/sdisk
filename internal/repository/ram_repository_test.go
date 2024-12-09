@@ -1,9 +1,10 @@
 package repository_test
 
 import (
-	"github.com/Joey-Boivin/sdisk-api/api/models"
-	"github.com/Joey-Boivin/sdisk-api/api/repository"
 	"testing"
+
+	"github.com/Joey-Boivin/sdisk/internal/models"
+	"github.com/Joey-Boivin/sdisk/internal/repository"
 )
 
 func TestSaveUser(t *testing.T) {

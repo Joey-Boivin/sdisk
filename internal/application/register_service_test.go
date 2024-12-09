@@ -3,9 +3,9 @@ package application_test
 import (
 	"testing"
 
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/mocks"
-	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk/internal/application"
+	"github.com/Joey-Boivin/sdisk/internal/mocks"
+	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
 func TestRegisterService(t *testing.T) {

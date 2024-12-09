@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Joey-Boivin/sdisk-api/api/application"
-	"github.com/Joey-Boivin/sdisk-api/api/handlers"
-	"github.com/Joey-Boivin/sdisk-api/api/mocks"
-	"github.com/Joey-Boivin/sdisk-api/api/models"
+	"github.com/Joey-Boivin/sdisk/internal/application"
+	"github.com/Joey-Boivin/sdisk/internal/handlers"
+	"github.com/Joey-Boivin/sdisk/internal/mocks"
+	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
 var userInRepoEmail = "John_doe@test.com"
