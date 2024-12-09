@@ -2,7 +2,7 @@ package application_test
 
 import (
 	"testing"
-	
+
 	"github.com/Joey-Boivin/sdisk/internal/application"
 	"github.com/Joey-Boivin/sdisk/internal/mocks"
 	"github.com/Joey-Boivin/sdisk/internal/models"
