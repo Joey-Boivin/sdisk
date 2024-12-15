@@ -1,4 +1,4 @@
-package repository
+package infrastructure
 
 import (
 	"github.com/Joey-Boivin/sdisk/internal/models"

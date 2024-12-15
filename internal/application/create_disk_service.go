@@ -8,12 +8,14 @@ import (
 type CreateDiskService struct {
 	userRepository ports.UserRepository
 	sizeInMiB      uint64
+	realTimeServer ports.RealTimeServer
 }
 
-func NewCreateDiskService(userRepository ports.UserRepository, sizeInMib uint64) *CreateDiskService {
+func NewCreateDiskService(userRepository ports.UserRepository, sizeInMib uint64, server ports.RealTimeServer) *CreateDiskService {
 	return &CreateDiskService{
 		userRepository: userRepository,
 		sizeInMiB:      sizeInMib,
+		realTimeServer: server,
 	}
 }
 
@@ -25,5 +27,9 @@ func (c *CreateDiskService) CreateDisk(email string) error {
 
 	d := models.NewDisk(c.sizeInMiB)
 	err := u.AddDisk(d)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return c.realTimeServer.PrepareDisk(d)
 }

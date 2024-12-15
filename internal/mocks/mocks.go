@@ -30,3 +30,20 @@ func (r *UserRepositoryMock) GetUser(id string) *models.User {
 	}
 	return nil
 }
+
+type ServerMock struct {
+	FnPrepareDisk         func(d *models.Disk) error
+	PrepareDiskCalled     bool
+	PrepareDiskCalledWith *models.Disk
+}
+
+func (s *ServerMock) PrepareDisk(d *models.Disk) error {
+	s.PrepareDiskCalledWith = d
+	s.PrepareDiskCalled = true
+
+	if s.FnPrepareDisk != nil {
+		return s.FnPrepareDisk(d)
+	}
+
+	return nil
+}

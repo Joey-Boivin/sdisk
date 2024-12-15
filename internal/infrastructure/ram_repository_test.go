@@ -1,14 +1,14 @@
-package repository_test
+package infrastructure_test
 
 import (
 	"testing"
 
+	"github.com/Joey-Boivin/sdisk/internal/infrastructure"
 	"github.com/Joey-Boivin/sdisk/internal/models"
-	"github.com/Joey-Boivin/sdisk/internal/repository"
 )
 
 func TestSaveUser(t *testing.T) {
-	ramRepository := repository.NewRamRepository()
+	ramRepository := infrastructure.NewRamRepository()
 
 	t.Run("SaveCorrectUser", func(t *testing.T) {
 		anyUserEmail := "EMAIL@TEST.com"
@@ -23,7 +23,7 @@ func TestSaveUser(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	ramRepository := repository.NewRamRepository()
+	ramRepository := infrastructure.NewRamRepository()
 
 	t.Run("ReturnNilIfUserDoesNotExist", func(t *testing.T) {
 		emailOfUserNotInRepository := "JOHN_DOE@TEST.com"

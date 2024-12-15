@@ -8,12 +8,12 @@ import (
 
 	"github.com/Joey-Boivin/sdisk/internal/application"
 	"github.com/Joey-Boivin/sdisk/internal/handlers"
-	"github.com/Joey-Boivin/sdisk/internal/repository"
+	"github.com/Joey-Boivin/sdisk/internal/infrastructure"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	apiConfigPath = "./configs/api.yml"
+	apiConfigPath = "../../configs/api.yml"
 )
 
 type ApiConfig struct {
@@ -38,10 +38,13 @@ func main() {
 
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
-	userRepository := repository.NewRamRepository()
+	s := infrastructure.NewServer()
+	go s.Run()
+
+	userRepository := infrastructure.NewRamRepository()
 	registerService := application.NewRegisterService(userRepository)
 	fetchUserService := application.NewFetchUserService(userRepository)
-	createDiskService := application.NewCreateDiskService(userRepository, uint64(conf.DiskSize))
+	createDiskService := application.NewCreateDiskService(userRepository, uint64(conf.DiskSize), s)
 	userResource := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 	pingResource := handlers.NewPingHandler()
 
