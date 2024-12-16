@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Joey-Boivin/sdisk/internal/application"
+	"github.com/Joey-Boivin/sdisk/internal/infrastructure"
 	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
@@ -97,7 +98,6 @@ func (h *UserHandler) CreateDiskResource(writer http.ResponseWriter, req *http.R
 	if err != nil {
 		switch err.(type) {
 		default:
-
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 
@@ -106,8 +106,11 @@ func (h *UserHandler) CreateDiskResource(writer http.ResponseWriter, req *http.R
 			return
 
 		case *application.ErrUserDoesNotExist:
-
 			writer.WriteHeader(http.StatusNotFound)
+			return
+
+		case *infrastructure.ErrUnknownJob:
+			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}

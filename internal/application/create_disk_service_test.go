@@ -1,7 +1,7 @@
 package application_test
 
 import (
-	"reflect"
+	"errors"
 	"testing"
 
 	"github.com/Joey-Boivin/sdisk/internal/application"
@@ -23,8 +23,16 @@ func TestCreateDisk(t *testing.T) {
 		return userInRepository
 	}}
 
+	serverMockThatFails := mocks.ServerMock{FnPrepareDisk: func(d *models.Disk) error {
+		return errors.New("server failed to prepare disk")
+	}}
+
+	serverMockDummy := mocks.ServerMock{FnPrepareDisk: func(d *models.Disk) error {
+		return nil
+	}}
+
 	t.Run("ReturnErrUserDoesNotExist", func(t *testing.T) {
-		service := application.NewCreateDiskService(&repoWithoutUserMock, anySizeInMiB)
+		service := application.NewCreateDiskService(&repoWithoutUserMock, anySizeInMiB, &serverMockDummy)
 
 		err := service.CreateDisk(anyUserEmail)
 
@@ -33,7 +41,7 @@ func TestCreateDisk(t *testing.T) {
 
 	t.Run("AddNewDiskWithCorrectSize", func(t *testing.T) {
 		specifiedDiskSize := uint64(2048)
-		service := application.NewCreateDiskService(&repoWithUserMock, specifiedDiskSize)
+		service := application.NewCreateDiskService(&repoWithUserMock, specifiedDiskSize, &serverMockDummy)
 
 		_ = service.CreateDisk(anyUserEmail)
 
@@ -42,7 +50,7 @@ func TestCreateDisk(t *testing.T) {
 	})
 
 	t.Run("ReturnAddDiskErrValue", func(t *testing.T) {
-		service := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMiB))
+		service := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMiB), &serverMockDummy)
 		d := models.NewDisk(uint64(anySizeInMiB))
 		_ = userInRepository.AddDisk(d)
 
@@ -50,12 +58,30 @@ func TestCreateDisk(t *testing.T) {
 
 		assertError(t, err)
 	})
+
+	t.Run("ReturnServerFailureError", func(t *testing.T) {
+		userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
+		service := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMiB), &serverMockThatFails)
+
+		err := service.CreateDisk(anyUserEmail)
+
+		assertError(t, err)
+	})
+
+	t.Run("ServerPreparesDisk", func(t *testing.T) {
+		userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
+		service := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMiB), &serverMockDummy)
+
+		_ = service.CreateDisk(anyUserEmail)
+
+		assertTrue(t, serverMockDummy.PrepareDiskCalled)
+	})
 }
 
 func assertEquals(t *testing.T, got uint64, want uint64) {
 	t.Helper()
 
-	if !reflect.DeepEqual(got, want) {
+	if got != want {
 		t.Fatalf("Got response %d. Should've been %d", got, want)
 	}
 }

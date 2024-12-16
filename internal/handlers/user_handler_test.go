@@ -12,6 +12,7 @@ import (
 
 	"github.com/Joey-Boivin/sdisk/internal/application"
 	"github.com/Joey-Boivin/sdisk/internal/handlers"
+	"github.com/Joey-Boivin/sdisk/internal/infrastructure"
 	"github.com/Joey-Boivin/sdisk/internal/mocks"
 	"github.com/Joey-Boivin/sdisk/internal/models"
 )
@@ -30,6 +31,8 @@ var userHandler = &handlers.UserHandler{}
 
 var userRepoEmptyMock = mocks.UserRepositoryMock{}
 var userRepoWithUserMock = mocks.UserRepositoryMock{}
+var serverDummy = mocks.ServerMock{}
+var serverMockThatFails = mocks.ServerMock{}
 
 func setup() {
 	userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
@@ -39,9 +42,18 @@ func setup() {
 	userRepoWithUserMock = mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
 		return userInRepository
 	}}
+	serverDummy = mocks.ServerMock{FnPrepareDisk: func(d *models.Disk) error {
+		return nil
+	}}
+
+	serverMockThatFails = mocks.ServerMock{FnPrepareDisk: func(d *models.Disk) error {
+		anyOpcode := 12
+		return &infrastructure.ErrUnknownJob{Opcode: uint8(anyOpcode)}
+	}}
+
 	registerService = application.NewRegisterService(&userRepoWithUserMock)
 	fetchUserService = application.NewFetchUserService(&userRepoWithUserMock)
-	createDiskService = application.NewCreateDiskService(&userRepoWithUserMock, anySizeInMiB)
+	createDiskService = application.NewCreateDiskService(&userRepoWithUserMock, anySizeInMiB, &serverDummy)
 	userHandler = handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 }
 
@@ -218,7 +230,7 @@ func TestCreateDiskResource(t *testing.T) {
 
 	t.Run("IfUserDoesNotExistReturnHttpNotFound", func(t *testing.T) {
 		setup()
-		createDiskService := application.NewCreateDiskService(&userRepoEmptyMock, anySizeInMiB)
+		createDiskService := application.NewCreateDiskService(&userRepoEmptyMock, anySizeInMiB, &serverDummy)
 		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
@@ -243,6 +255,22 @@ func TestCreateDiskResource(t *testing.T) {
 
 		got := response.Code
 		want := http.StatusCreated
+		assertStatus(t, got, want)
+	})
+
+	t.Run("IfServerFailsReturnInternalError", func(t *testing.T) {
+		setup()
+		createDiskService = application.NewCreateDiskService(&userRepoWithUserMock, anySizeInMiB, &serverMockThatFails)
+		userHandler := handlers.NewUserHandler(registerService, fetchUserService, createDiskService)
+		response := httptest.NewRecorder()
+		reader := strings.NewReader("")
+		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
+		postRequest.SetPathValue("id", userInRepoEmail)
+
+		userHandler.CreateDiskResource(response, postRequest)
+
+		got := response.Code
+		want := http.StatusInternalServerError
 		assertStatus(t, got, want)
 	})
 
