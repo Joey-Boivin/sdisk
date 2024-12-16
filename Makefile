@@ -1,5 +1,6 @@
 
-BIN_NAME=sdisk
+SERVER_BIN_NAME=sdisk-server
+CLIENT_BIN_NAME=sdisk-client
 
 all: prep build
 
@@ -16,7 +17,8 @@ test:
 	go test github.com/Joey-Boivin/sdisk/...
 
 build: prep
-	go build -o bin/${BIN_NAME} cmd/server/main.go
+	go build -o bin/${SERVER_BIN_NAME} cmd/server/main.go
+	go build -o bin/${CLIENT_BIN_NAME} cmd/client/main.go
 
 run: build
 	bin/${BIN_NAME}

@@ -2,11 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug main.go",
+            "name": "Debug server",
             "type": "go",
             "mode": "debug",
             "request": "launch",
             "program": "${workspaceRoot}/cmd/server/main.go"
+        },
+        {
+            "name": "Debug client",
+            "type": "go",
+            "mode": "debug",
+            "request": "launch",
+            "program": "${workspaceRoot}/cmd/client/main.go"
         }
     ]
 }
