@@ -15,13 +15,24 @@ func NewRamRepository() *RamRepository {
 }
 
 func (r *RamRepository) SaveUser(u *models.User) {
-	r.users[u.GetEmail()] = u
+	id := u.GetID()
+	r.users[id.ToString()] = u
 }
 
-func (r *RamRepository) GetUser(id string) *models.User {
-	if val, ok := r.users[id]; ok {
+func (r *RamRepository) GetByID(id models.UserID) *models.User {
+	if val, ok := r.users[id.ToString()]; ok {
 		return val
 	} else {
 		return nil
 	}
+}
+
+func (r *RamRepository) GetByEmail(email string) *models.User {
+	for _, val := range r.users {
+		if val.GetEmail() == email {
+			return val
+		}
+	}
+
+	return nil
 }

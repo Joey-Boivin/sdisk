@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/Joey-Boivin/sdisk/internal/application"
@@ -48,18 +49,19 @@ func (h *UserHandler) CreateUserResource(writer http.ResponseWriter, req *http.R
 		return
 	}
 
-	err = h.registerService.RegisterUser(registerRequest.Email, registerRequest.Password)
+	id, err := h.registerService.RegisterUser(registerRequest.Email, registerRequest.Password)
 	if err != nil {
 		writer.WriteHeader(http.StatusForbidden)
 		return
 	}
 
+	writer.Header().Set("Location", fmt.Sprintf("/users/%s", id.ToString()))
 	writer.WriteHeader(http.StatusCreated)
 }
 
 func (h *UserHandler) GetUserResource(writer http.ResponseWriter, req *http.Request) {
-	email := req.PathValue("id")
-	user, err := h.fetchUserService.FetchUser(email)
+	id := req.PathValue("id")
+	user, err := h.fetchUserService.FetchUser(id)
 	if err != nil {
 		writer.WriteHeader(http.StatusNotFound)
 		return

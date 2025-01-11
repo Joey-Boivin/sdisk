@@ -7,9 +7,13 @@ type UserRepositoryMock struct {
 	SaveUserCalled     bool
 	SaveUserCalledWith *models.User
 
-	FnGetUser         func(id string) *models.User
-	GetUserCalled     bool
-	GetUserCalledWith string
+	FnGetUserByID         func(id models.UserID) *models.User
+	GetUserByIDCalled     bool
+	GetUserByIDCalledWith models.UserID
+
+	FnGetUserByEmail         func(email string) *models.User
+	GetUserByEmailCalled     bool
+	GetUserByEmailCalledWith string
 }
 
 func (r *UserRepositoryMock) SaveUser(u *models.User) {
@@ -21,13 +25,24 @@ func (r *UserRepositoryMock) SaveUser(u *models.User) {
 	}
 }
 
-func (r *UserRepositoryMock) GetUser(id string) *models.User {
-	r.GetUserCalled = true
-	r.GetUserCalledWith = id
+func (r *UserRepositoryMock) GetByID(id models.UserID) *models.User {
+	r.GetUserByIDCalled = true
+	r.GetUserByIDCalledWith = id
 
-	if r.FnGetUser != nil {
-		return r.FnGetUser(id)
+	if r.FnGetUserByID != nil {
+		return r.FnGetUserByID(id)
 	}
+	return nil
+}
+
+func (r *UserRepositoryMock) GetByEmail(email string) *models.User {
+	r.GetUserByEmailCalled = true
+	r.GetUserByEmailCalledWith = email
+
+	if r.FnGetUserByEmail != nil {
+		return r.FnGetUserByEmail(email)
+	}
+
 	return nil
 }
 

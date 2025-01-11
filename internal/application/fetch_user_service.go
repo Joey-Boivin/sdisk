@@ -15,8 +15,14 @@ func NewFetchUserService(userRepository ports.UserRepository) *FetchUserService 
 	}
 }
 
-func (fetchUserService *FetchUserService) FetchUser(email string) (models.User, error) {
-	user := fetchUserService.userRepository.GetUser(email)
+func (fetchUserService *FetchUserService) FetchUser(id string) (models.User, error) {
+	userID, err := models.FromString(id)
+
+	if err != nil {
+		return models.User{}, err
+	}
+
+	user := fetchUserService.userRepository.GetByID(userID)
 	if user == nil {
 		return models.User{}, &ErrUserDoesNotExist{}
 	}

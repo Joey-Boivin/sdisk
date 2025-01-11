@@ -19,14 +19,20 @@ func NewCreateDiskService(userRepository ports.UserRepository, sizeInMib uint64,
 	}
 }
 
-func (c *CreateDiskService) CreateDisk(email string) error {
-	u := c.userRepository.GetUser(email)
+func (c *CreateDiskService) CreateDisk(id string) error {
+	userID, err := models.FromString(id)
+
+	if err != nil {
+		return err
+	}
+
+	u := c.userRepository.GetByID(userID)
 	if u == nil {
 		return &ErrUserDoesNotExist{}
 	}
 
 	d := models.NewDisk(c.sizeInMiB)
-	err := u.AddDisk(d)
+	err = u.AddDisk(d)
 	if err != nil {
 		return err
 	}
