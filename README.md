@@ -24,7 +24,7 @@ make build lint test
 
 
 
-### Nix users can use the following shell.nix to install all the dev dependencies
+### Nix users can use the following shell.nix to install all the dev dependencies and export relevant environment variables
 
 ```nix
 { pkgs ? import <nixpkgs> {} }:
@@ -45,8 +45,25 @@ pkgs.mkShell
     shellHook = ''
         export GOPATH=$(pwd)/go
         export PATH=$PATH:$GOPATH/bin
+        export SDISK_HOME="$PWD"
         '';
 }
+```
+
+### Outside of a nix shell
+
+Install relevant dependencies with your package manager of choice.
+
+Export relevant environment variables with
+
+```shell
+source scripts/env.sh
+```
+
+### Install third party libraries
+
+```shell
+go mod tidy
 ```
 
 ## Simplified architecture diagram
