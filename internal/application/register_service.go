@@ -15,14 +15,15 @@ func NewRegisterService(userRepository ports.UserRepository) *RegisterService {
 	}
 }
 
-func (registerService *RegisterService) RegisterUser(email string, password string) error {
-	user := registerService.userRepository.GetUser(email)
+func (registerService *RegisterService) RegisterUser(email string, password string) (models.UserID, error) {
+	user := registerService.userRepository.GetByEmail(email)
 
 	if user != nil {
-		return &ErrUserAlreadyExists{email}
+		return user.GetID(), &ErrUserAlreadyExists{email}
 	}
 
 	user = models.NewUser(email, password)
 	registerService.userRepository.SaveUser(user)
-	return nil
+
+	return user.GetID(), nil
 }

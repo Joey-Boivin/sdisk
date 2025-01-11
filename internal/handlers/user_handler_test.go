@@ -22,6 +22,7 @@ var anyUserPassword = "12345"
 var anySizeInMiB = uint64(1024)
 
 var userInRepository = &models.User{}
+var idOfUserInRepository = models.UserID{}
 
 var registerService = &application.RegisterService{}
 var fetchUserService = &application.FetchUserService{}
@@ -36,12 +37,15 @@ var serverMockThatFails = mocks.ServerMock{}
 
 func setup() {
 	userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
-	userRepoEmptyMock = mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+	idOfUserInRepository = userInRepository.GetID()
+
+	userRepoEmptyMock = mocks.UserRepositoryMock{FnGetUserByID: func(id models.UserID) *models.User {
 		return nil
-	}}
-	userRepoWithUserMock = mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+	}, FnGetUserByEmail: func(email string) *models.User { return nil }}
+	userRepoWithUserMock = mocks.UserRepositoryMock{FnGetUserByID: func(id models.UserID) *models.User {
 		return userInRepository
-	}}
+	}, FnGetUserByEmail: func(email string) *models.User { return userInRepository }}
+
 	serverDummy = mocks.ServerMock{FnPrepareDisk: func(d *models.Disk) error {
 		return nil
 	}}
@@ -144,6 +148,8 @@ func TestCreateUser(t *testing.T) {
 
 func TestGetUser(t *testing.T) {
 
+	idOfUserInRepository := userInRepository.GetID()
+
 	t.Run("ReturnHttpNotFoundIfUserDoesNotExist", func(t *testing.T) {
 		setup()
 		fetchUserService = application.NewFetchUserService(&userRepoEmptyMock)
@@ -164,7 +170,7 @@ func TestGetUser(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
-		getRequest.SetPathValue("id", userInRepoEmail)
+		getRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.GetUserResource(response, getRequest)
 
@@ -178,6 +184,7 @@ func TestGetUser(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
+		getRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.GetUserResource(response, getRequest)
 
@@ -191,6 +198,7 @@ func TestGetUser(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
+		getRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.GetUserResource(response, getRequest)
 
@@ -204,6 +212,7 @@ func TestGetUser(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		getRequest, _ := http.NewRequest(http.MethodGet, handlers.GetUserEndpoint, reader)
+		getRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.GetUserResource(response, getRequest)
 
@@ -219,7 +228,7 @@ func TestCreateDiskResource(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
-		postRequest.SetPathValue("id", userInRepoEmail)
+		postRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.CreateDiskResource(response, postRequest)
 
@@ -235,7 +244,7 @@ func TestCreateDiskResource(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
-		postRequest.SetPathValue("id", userInRepoEmail)
+		postRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.CreateDiskResource(response, postRequest)
 
@@ -249,7 +258,7 @@ func TestCreateDiskResource(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
-		postRequest.SetPathValue("id", userInRepoEmail)
+		postRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.CreateDiskResource(response, postRequest)
 
@@ -265,7 +274,7 @@ func TestCreateDiskResource(t *testing.T) {
 		response := httptest.NewRecorder()
 		reader := strings.NewReader("")
 		postRequest, _ := http.NewRequest(http.MethodPost, handlers.CreateDiskEndpoint, reader)
-		postRequest.SetPathValue("id", userInRepoEmail)
+		postRequest.SetPathValue("id", idOfUserInRepository.ToString())
 
 		userHandler.CreateDiskResource(response, postRequest)
 

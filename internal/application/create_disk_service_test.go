@@ -15,11 +15,13 @@ func TestCreateDisk(t *testing.T) {
 	userInRepoEmail := "John_doe@test.com"
 	anyUserPassword := "12345"
 	userInRepository := models.NewUser(userInRepoEmail, anyUserPassword)
-	repoWithoutUserMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+	idOfUserInRepository := userInRepository.GetID()
+
+	repoWithoutUserMock := mocks.UserRepositoryMock{FnGetUserByID: func(id models.UserID) *models.User {
 		return nil
 	}}
 
-	repoWithUserMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
+	repoWithUserMock := mocks.UserRepositoryMock{FnGetUserByID: func(id models.UserID) *models.User {
 		return userInRepository
 	}}
 
@@ -43,7 +45,7 @@ func TestCreateDisk(t *testing.T) {
 		specifiedDiskSize := uint64(2048)
 		service := application.NewCreateDiskService(&repoWithUserMock, specifiedDiskSize, &serverMockDummy)
 
-		_ = service.CreateDisk(anyUserEmail)
+		_ = service.CreateDisk(idOfUserInRepository.ToString())
 
 		createdDiskSize, _ := userInRepository.GetDiskSpaceLeft()
 		assertEquals(t, createdDiskSize, uint64(specifiedDiskSize))
@@ -54,7 +56,7 @@ func TestCreateDisk(t *testing.T) {
 		d := models.NewDisk(uint64(anySizeInMiB))
 		_ = userInRepository.AddDisk(d)
 
-		err := service.CreateDisk(anyUserEmail)
+		err := service.CreateDisk(idOfUserInRepository.ToString())
 
 		assertError(t, err)
 	})
@@ -63,7 +65,7 @@ func TestCreateDisk(t *testing.T) {
 		userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
 		service := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMiB), &serverMockThatFails)
 
-		err := service.CreateDisk(anyUserEmail)
+		err := service.CreateDisk(idOfUserInRepository.ToString())
 
 		assertError(t, err)
 	})
@@ -72,7 +74,7 @@ func TestCreateDisk(t *testing.T) {
 		userInRepository = models.NewUser(userInRepoEmail, anyUserPassword)
 		service := application.NewCreateDiskService(&repoWithUserMock, uint64(anySizeInMiB), &serverMockDummy)
 
-		_ = service.CreateDisk(anyUserEmail)
+		_ = service.CreateDisk(idOfUserInRepository.ToString())
 
 		assertTrue(t, serverMockDummy.PrepareDiskCalled)
 	})

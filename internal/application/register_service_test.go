@@ -14,20 +14,25 @@ func TestRegisterService(t *testing.T) {
 	anyUserPassword := "12345"
 
 	userRepoSpy := mocks.UserRepositoryMock{}
-	userInRepoMock := mocks.UserRepositoryMock{FnGetUser: func(id string) *models.User {
-		return models.NewUser(userInRepoEmail, anyUserPassword)
+	userInRepo := models.NewUser(userInRepoEmail, anyUserPassword)
+
+	userInRepoMock := mocks.UserRepositoryMock{FnGetUserByID: func(id models.UserID) *models.User {
+		return userInRepo
+	}, FnGetUserByEmail: func(email string) *models.User {
+		return userInRepo
 	}}
+
 	registerService := application.NewRegisterService(&userRepoSpy)
 
 	t.Run("UseRegisterServiceToSaveUser", func(t *testing.T) {
-		err := registerService.RegisterUser(anyUserEmail, anyUserPassword)
+		_, err := registerService.RegisterUser(anyUserEmail, anyUserPassword)
 
 		assertTrue(t, userRepoSpy.SaveUserCalled)
 		assertNoError(t, err)
 	})
 
 	t.Run("CreateUserWithCorrectParameters", func(t *testing.T) {
-		err := registerService.RegisterUser(anyUserEmail, anyUserPassword)
+		_, err := registerService.RegisterUser(anyUserEmail, anyUserPassword)
 
 		emailUsed := userRepoSpy.SaveUserCalledWith.GetEmail()
 		passwordUsed := userRepoSpy.SaveUserCalledWith.GetPassword()
@@ -39,7 +44,7 @@ func TestRegisterService(t *testing.T) {
 	t.Run("ReturnErrorIfUserAlreadyExists", func(t *testing.T) {
 		registerService = application.NewRegisterService(&userInRepoMock)
 
-		err := registerService.RegisterUser(userInRepoEmail, anyUserPassword)
+		_, err := registerService.RegisterUser(userInRepoEmail, anyUserPassword)
 
 		assertError(t, err)
 	})

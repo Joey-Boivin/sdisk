@@ -12,10 +12,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	apiConfigPath = "../../configs/api.yml"
-)
-
 type ApiConfig struct {
 	Host     string `yaml:"host"`
 	Port     uint   `yaml:"port"`
@@ -23,7 +19,10 @@ type ApiConfig struct {
 }
 
 func main() {
-	file, err := os.Open(apiConfigPath)
+	path := os.Getenv("SDISK_HOME")
+	path += "/configs/api.yml"
+
+	file, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
 	}
@@ -39,7 +38,7 @@ func main() {
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
 	s := infrastructure.NewServer()
-	go s.Run()
+	//go s.Run()
 
 	userRepository := infrastructure.NewRamRepository()
 	registerService := application.NewRegisterService(userRepository)
