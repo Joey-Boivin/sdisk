@@ -3,4 +3,5 @@ bin/
 sroot/
 go/
 local/
+disk/
 shell.nix

@@ -37,8 +37,9 @@ func main() {
 
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
-	s := infrastructure.NewServer()
-	//go s.Run()
+	tcpserverconfig := infrastructure.NewDefaultTCPServerConfig()
+	s := infrastructure.NewTCPServer(tcpserverconfig)
+	go s.Run()
 
 	userRepository := infrastructure.NewRamRepository()
 	registerService := application.NewRegisterService(userRepository)

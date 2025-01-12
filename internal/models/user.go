@@ -27,6 +27,20 @@ func (u *UserID) ToString() string {
 	return u.id.String()
 }
 
+func (u *UserID) Bytes() []byte {
+	return u.id[:]
+}
+
+func FromBytes(id []byte) (UserID, error) {
+	userID, err := uuid.FromBytes(id)
+
+	if err != nil {
+		return UserID{}, &ErrInvalidID{invalidID: string(id[:])}
+	}
+
+	return UserID{id: userID}, nil
+}
+
 type User struct {
 	id       UserID
 	email    string

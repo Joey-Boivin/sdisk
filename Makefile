@@ -18,8 +18,10 @@ WARN_BENCHMARK_FILES = ${BOLD_YELLOW}WARN: Creating large files for benchmarks i
 all: build
 
 prep:
+	@. scripts/env.sh
 	@echo -e "${INFO_PREP}"
 	@mkdir -p bin
+	@mkdir -p "${SDISK_ROOT}"
 
 format:
 	@echo -e "${INFO_FORMAT}"

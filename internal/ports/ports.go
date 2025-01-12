@@ -9,5 +9,6 @@ type UserRepository interface {
 }
 
 type RealTimeServer interface {
+	Run()
 	PrepareDisk(d *models.Disk) error
 }
