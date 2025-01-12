@@ -50,6 +50,9 @@ type ServerMock struct {
 	FnPrepareDisk         func(d *models.Disk) error
 	PrepareDiskCalled     bool
 	PrepareDiskCalledWith *models.Disk
+
+	FnRun     func()
+	RunCalled bool
 }
 
 func (s *ServerMock) PrepareDisk(d *models.Disk) error {
@@ -61,4 +64,12 @@ func (s *ServerMock) PrepareDisk(d *models.Disk) error {
 	}
 
 	return nil
+}
+
+func (s *ServerMock) Run() {
+	s.RunCalled = true
+
+	if s.FnRun != nil {
+		s.FnRun()
+	}
 }
