@@ -1,10 +1,11 @@
 package infrastructure
 
 import (
+	"io"
 	"net"
 )
 
-const DEFAULT_QUEUE_SIZE_BYTES = 10240 // 10KiB
+const DEFAULT_QUEUE_SIZE_BYTES = 1024 * 1000 // 1MiB TODO: Dynamic size buffer depending on the transaction to optmize performance and ram usage
 
 type Connection struct {
 	conn               net.Conn
@@ -87,7 +88,9 @@ func (connection *Connection) Read() {
 		for ok := true; ok; ok = (totalRead != nextPacketLength) {
 			read, err := connection.conn.Read(buff[totalRead:])
 			if err != nil {
-				panic(err)
+				if err != io.EOF {
+					panic(err)
+				}
 			}
 
 			if totalRead == 0 {

@@ -112,13 +112,19 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 	chunksCeil := int(math.Ceil(chunks))
 
 	sent := 0
+	read := 0
+	total := int(info.Size())
 
 	for i := 0; i < chunksCeil; i++ {
-		fileContentBuffer := make([]byte, chunksSize)
+		fileContentBuffer := make([]byte, int(math.Min(float64(total), float64(chunksSize))))
 
-		f.Seek(int64(sent), 0)
-		_, err = f.Read(fileContentBuffer)
+		if err != nil {
+			panic(err)
+		}
 
+		read, err = f.Read(fileContentBuffer)
+		//fmt.Printf("read %d bytes from file\n", read)
+		//fmt.Printf("read %s\n", string(fileContentBuffer))
 		if err != nil {
 			if err != io.EOF {
 				panic(err)
@@ -127,7 +133,7 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 
 		updateJob := UpdateDataJob{
 			Total:    uint64(info.Size()),
-			Offset:   uint64(sent),
+			Offset:   uint64(read),
 			PathLen:  uint64(len(info.Name())),
 			Path:     info.Name(),
 			FileData: fileContentBuffer,
@@ -156,12 +162,14 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 		toSend := job.Bytes()
 		wrote, err := client.connection.Write(toSend)
 		sent += wrote
-		fmt.Printf("sent a packet of total length %d and data length %d\n", wrote, len(raw))
+		//fmt.Printf("sent a packet of total length %d and data length %d\n", wrote, len(raw))
 
 		updateJob.Offset += uint64(wrote)
 
 		if err != nil {
 			panic(err)
 		}
+
+		total -= read
 	}
 }
