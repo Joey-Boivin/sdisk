@@ -160,13 +160,6 @@ func (server *TCPServer) updateData(job *Job) error {
 	if err != nil {
 		panic(err)
 	}
-	//userID, err := models.FromBytes(job.Header.id[:])
-	if err != nil {
-		panic(err)
-	}
-
-	//fmt.Printf("received some content %s\n", string(updateDataJob.FileData))
-	//fmt.Printf("from user %s\n", userID.ToString())
 
 	filePath := os.Getenv("SDISK_HOME") + "/users/" + updateDataJob.Path
 
@@ -176,8 +169,12 @@ func (server *TCPServer) updateData(job *Job) error {
 	}
 	defer file.Close()
 
-	//_, err = file.Write(updateDataJob.FileData)
-	fmt.Printf("Wrote %d", len(updateDataJob.FileData))
+	if updateDataJob.Offset != 0 {
+		file.Seek(int64(updateDataJob.Offset), 0)
+	}
+
+	_, err = file.Write(updateDataJob.FileData)
+
 	if err != nil {
 		panic(err)
 	}

@@ -49,12 +49,17 @@ type UpdateDataJob struct {
 	FileData []byte
 }
 
-func (header *JobHeader) fromBytes(data []byte) {
+func (header *JobHeader) fromBytes(data []byte) error {
+	if data[0] != VERSION {
+		return &ErrUnsuportedProtocolVersion{ReceivedVersion: data[0]}
+	}
+
 	header.Version = data[0]
 	header.Opcode = PacketOpcode(data[1])
 	header.Encoding = PacketEncoding(data[2])
 	copy(header.id[:], data)
 	header.DataSize = binary.BigEndian.Uint16(data[3+ID_SIZE : 5+ID_SIZE])
+	return nil
 }
 
 func (j *Job) FromBytes(data []byte) error {
@@ -62,12 +67,11 @@ func (j *Job) FromBytes(data []byte) error {
 		return &ErrUnexpectedHeaderLength{ReceivedHeaderLength: len(data)}
 	}
 
-	if data[0] != VERSION {
-		return &ErrUnsuportedProtocolVersion{ReceivedVersion: data[0]}
-	}
-
 	var header JobHeader
-	header.fromBytes(data[:HEADER_SIZE])
+	err := header.fromBytes(data[:HEADER_SIZE])
+	if err != nil {
+		return err
+	}
 
 	if int(header.DataSize) > len(data[HEADER_SIZE:]) {
 		return &ErrIncompletePacket{}
@@ -109,7 +113,7 @@ func (p *PrepareDiskJob) FromBytes(data []byte) error {
 }
 
 func (u *UpdateDataJob) Bytes() ([]byte, error) {
-	buff := make([]byte, 0, 12+u.PathLen+u.Total)
+	buff := make([]byte, 0, 24+int(u.PathLen)+len(u.FileData))
 	buffTotal := make([]byte, 8)
 	buffOffset := make([]byte, 8)
 	buffPathLen := make([]byte, 8)

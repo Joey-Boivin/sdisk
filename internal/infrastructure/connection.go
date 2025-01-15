@@ -1,11 +1,16 @@
 package infrastructure
 
 import (
+	"fmt"
 	"io"
 	"net"
+	"os"
+	"time"
+
+	"github.com/smallnest/ringbuffer"
 )
 
-const DEFAULT_QUEUE_SIZE_BYTES = 1024 * 1000 // 1MiB TODO: Dynamic size buffer depending on the transaction to optmize performance and ram usage
+const DEFAULT_QUEUE_SIZE_BYTES = 1024 * 16 // 1MiB TODO: Dynamic size buffer depending on the transaction to optmize performance and ram usage
 
 type Connection struct {
 	conn               net.Conn
@@ -35,48 +40,8 @@ func NewConnection(config *ConnectionConfig) *Connection {
 	}
 }
 
+/*
 func (connection *Connection) Read() {
-	/*
-		for {
-			totalRead := 0
-			nextPacketLength := 0
-			buff := make([]byte, connection.dataQueueSizeBytes)
-			var header JobHeader
-			var job Job
-
-			for ok := true; ok; ok = (totalRead == nextPacketLength) {
-				read, err := connection.conn.Read(buff[totalRead:])
-				if err != nil {
-					panic(err)
-				}
-
-				if totalRead == 0 {
-					header.fromBytes(buff)
-					nextPacketLength = int(header.DataSize) + HEADER_SIZE
-				}
-
-				totalRead += read
-
-				if totalRead == nextPacketLength {
-					// packet is exactly complete
-					err = job.FromBytes(buff)
-					if err != nil {
-						panic(err)
-					}
-					connection.jobQueue <- &job
-				} else if totalRead > nextPacketLength {
-					//copy(previous, buff[wantedLength:])
-					err = job.FromBytes(buff)
-					if err != nil {
-						panic(err)
-					}
-					connection.jobQueue <- &job
-					header.fromBytes(buff[nextPacketLength:])
-					totalRead -= nextPacketLength
-					nextPacketLength = int(header.DataSize) + HEADER_SIZE
-				}
-			}
-	*/
 	for {
 		totalRead := 0
 		previousPacketLength := 0
@@ -87,10 +52,12 @@ func (connection *Connection) Read() {
 
 		for ok := true; ok; ok = (totalRead != nextPacketLength) {
 			read, err := connection.conn.Read(buff[totalRead:])
+			fmt.Printf("read %d \n", read)
 			if err != nil {
 				if err != io.EOF {
 					panic(err)
 				}
+				return
 			}
 
 			if totalRead == 0 {
@@ -101,6 +68,7 @@ func (connection *Connection) Read() {
 			totalRead += read
 
 			if totalRead > nextPacketLength {
+				fmt.Printf("More than one!\n")
 				err = job.FromBytes(buff)
 				if err != nil {
 					panic(err)
@@ -115,26 +83,64 @@ func (connection *Connection) Read() {
 
 		_ = job.FromBytes(buff[previousPacketLength:])
 		connection.jobQueue <- &job
+	}
+}
+*/
 
-		/*
-			if err != nil {
-				panic(err)
-			}
+func (connection *Connection) Read() {
+	ring := ringbuffer.New(DEFAULT_QUEUE_SIZE_BYTES * 14)
 
-			fmt.Printf("read %d bytes\n", read)
+	for {
+		buff := make([]byte, connection.dataQueueSizeBytes)
+		readDeadline := time.Now().Add(100 * time.Millisecond)
+		_ = connection.conn.SetDeadline(readDeadline)
+		read, err := connection.conn.Read(buff)
 
-			n := 0
-			parsed := n
-			var job *Job
-			for ok := true; ok; ok = (n == 0) {
-				n, err = connection.framer.Parse(buff[n:read])
-				parsed += n
-				if n > 0 && err != nil {
-					job.FromBytes(buff[n:parsed])
-					connection.jobQueue <- job
-				}
-			}
-		*/
+		if err != nil && err != io.EOF && !os.IsTimeout(err) {
+			panic(err)
+		}
+
+		wrote, err := ring.Write(buff[:read])
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("read %d from socket\n", read)
+		fmt.Printf("wrote %d to ring buff\n", wrote)
+
+		if ring.Length() < HEADER_SIZE {
+			continue
+		}
+
+		var h JobHeader
+		_, err = ring.Peek(buff[:HEADER_SIZE])
+		if err != nil {
+			panic(err)
+		}
+
+		err = h.fromBytes(buff[:HEADER_SIZE])
+		if err != nil {
+			panic(err)
+		}
+
+		nextPacketLength := int(h.DataSize) + HEADER_SIZE
+
+		if ring.Length() < nextPacketLength {
+			continue
+		}
+
+		readFromRing, err := ring.Read(buff[:nextPacketLength])
+		fmt.Printf("read %d from ring buff\n", readFromRing)
+		if err != nil {
+			panic(err)
+		}
+
+		var job Job
+		err = job.FromBytes(buff[:nextPacketLength])
+		if err != nil {
+			panic(err)
+		}
+		connection.jobQueue <- &job
 	}
 }
 
