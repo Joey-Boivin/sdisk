@@ -43,11 +43,10 @@ test_files:
 benchmark_files:
 	@echo -e "${INFO_BENCHMARK_FILES}"
 	@echo -e "${WARN_BENCHMARK_FILES}"
-	@mkdir -p data
-	@dd if=/dev/random of=data/file1.txt conv=notrunc bs=1024 count=100
-	@dd if=/dev/random of=data/file2.txt conv=notrunc bs=1024 count=1000
-	@dd if=/dev/random of=data/file3.txt conv=notrunc bs=1024 count=100000
-	@dd if=/dev/random of=data/file4.txt conv=notrunc bs=1024 count=1000000
+	@dd if=/dev/random of=client_root/file1.txt conv=notrunc bs=1024 count=100
+	@dd if=/dev/random of=client_root/file2.txt conv=notrunc bs=1024 count=1000
+	@dd if=/dev/random of=client_root/file3.txt conv=notrunc bs=1024 count=10000
+	@dd if=/dev/random of=client_root/file4.txt conv=notrunc bs=1024 count=100000
 
 build: prep
 	@echo -e "${INFO_BUILD}"
