@@ -146,7 +146,7 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 		}
 
 		header := JobHeader{
-			DataSize: uint16(len(raw)),//THE BUG IS HERE
+			DataSize: uint16(len(raw)), //THE BUG IS HERE
 			Version:  VERSION,
 			Encoding: EncodingNone,
 			Opcode:   UpdateData,

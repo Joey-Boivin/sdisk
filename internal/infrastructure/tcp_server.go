@@ -170,7 +170,13 @@ func (server *TCPServer) updateData(job *Job) error {
 	defer file.Close()
 
 	if updateDataJob.Offset != 0 {
-		file.Seek(int64(updateDataJob.Offset), 0)
+		seeked, err := file.Seek(int64(updateDataJob.Offset), 0)
+		if err != nil {
+			return err
+		}
+		if seeked != int64(updateDataJob.Offset) {
+			return &ErrUnexpectedFileState{}
+		}
 	}
 
 	_, err = file.Write(updateDataJob.FileData)
