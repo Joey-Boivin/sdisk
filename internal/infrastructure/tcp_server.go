@@ -8,12 +8,6 @@ import (
 	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
-const DEFAULT_MAX_CONNECTIONS = 10
-const DEFAULT_MAX_QUEUED_CONNECTIONS = DEFAULT_MAX_CONNECTIONS
-const DEFAULT_MAX_QUEUED_JOBS = 36
-const DEFAULT_ADDRESS = "localhost"
-const DEFAULT_PORT = 10000
-
 type TCPServer struct {
 	jobQueue          chan *Job
 	connectionsQueue  chan net.Conn
@@ -35,7 +29,7 @@ func NewDefaultTCPServerConfig() *TCPServerConfig {
 	return &TCPServerConfig{
 		maxConnections:       DEFAULT_MAX_CONNECTIONS,
 		maxQueuedConnections: DEFAULT_MAX_QUEUED_CONNECTIONS,
-		maxQueuedJobs:        DEFAULT_MAX_QUEUED_JOBS,
+		maxQueuedJobs:        DEFAULT_MAX_QUEUED_SERVER_JOBS,
 		address:              DEFAULT_ADDRESS,
 		port:                 DEFAULT_PORT,
 	}
@@ -90,11 +84,14 @@ func (server *TCPServer) PrepareDisk(disk *models.Disk) error {
 		DataSize: uint16(len(raw)),
 	}
 
+	userID := []byte(TEST_ID)  // TODO
+	copy(header.id[:], userID) //TODO
+
 	job := new(Job)
 	job.Header = header
 	job.Data = raw
 
-	server.jobQueue <- job // TODO: handle max cap
+	server.jobQueue <- job //TODO: handle max cap
 
 	return nil
 }
@@ -133,6 +130,8 @@ func (server *TCPServer) handleJob(job *Job) error {
 	switch job.Header.Opcode {
 	case PrepareDisk:
 		return server.prepareDisk(job)
+	case UpdateData:
+		return server.updateData(job)
 	}
 
 	return &ErrUnknownJob{Opcode: uint8(job.Header.Opcode)}
@@ -147,6 +146,41 @@ func (server *TCPServer) prepareDisk(job *Job) error {
 	}
 
 	err = os.Mkdir(os.Getenv("SDISK_HOME")+"/users", 0777)
+	if err != nil {
+		panic(err)
+	}
+
+	return nil
+}
+
+func (server *TCPServer) updateData(job *Job) error {
+	var updateDataJob UpdateDataJob
+	err := updateDataJob.FromBytes(job.Data)
+
+	if err != nil {
+		panic(err)
+	}
+
+	filePath := os.Getenv("SDISK_HOME") + "/users/" + updateDataJob.Path
+
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if updateDataJob.Offset != 0 {
+		seeked, err := file.Seek(int64(updateDataJob.Offset), 0)
+		if err != nil {
+			return err
+		}
+		if seeked != int64(updateDataJob.Offset) {
+			return &ErrUnexpectedFileState{}
+		}
+	}
+
+	_, err = file.Write(updateDataJob.FileData)
+
 	if err != nil {
 		panic(err)
 	}

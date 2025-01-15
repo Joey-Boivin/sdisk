@@ -7,6 +7,7 @@ import (
 const VERSION = 0
 const HEADER_SIZE = 21
 const ID_SIZE = 16
+const TEST_ID = "1234567891234567" //TODO
 
 type PacketOpcode byte
 type PacketEncoding byte
@@ -48,12 +49,17 @@ type UpdateDataJob struct {
 	FileData []byte
 }
 
-func (header *JobHeader) fromBytes(data []byte) {
+func (header *JobHeader) fromBytes(data []byte) error {
+	if data[0] != VERSION {
+		return &ErrUnsuportedProtocolVersion{ReceivedVersion: data[0]}
+	}
+
 	header.Version = data[0]
 	header.Opcode = PacketOpcode(data[1])
 	header.Encoding = PacketEncoding(data[2])
 	copy(header.id[:], data)
-	header.DataSize = binary.BigEndian.Uint16(data[3:5])
+	header.DataSize = binary.BigEndian.Uint16(data[3+ID_SIZE : 5+ID_SIZE])
+	return nil
 }
 
 func (j *Job) FromBytes(data []byte) error {
@@ -61,19 +67,18 @@ func (j *Job) FromBytes(data []byte) error {
 		return &ErrUnexpectedHeaderLength{ReceivedHeaderLength: len(data)}
 	}
 
-	if data[0] != VERSION {
-		return &ErrUnsuportedProtocolVersion{ReceivedVersion: data[0]}
-	}
-
 	var header JobHeader
-	header.fromBytes(data[:HEADER_SIZE])
+	err := header.fromBytes(data[:HEADER_SIZE])
+	if err != nil {
+		return err
+	}
 
 	if int(header.DataSize) > len(data[HEADER_SIZE:]) {
 		return &ErrIncompletePacket{}
 	}
 
 	j.Header = header
-	j.Data = data[HEADER_SIZE:]
+	j.Data = data[HEADER_SIZE : HEADER_SIZE+j.Header.DataSize]
 
 	return nil
 }
@@ -108,7 +113,7 @@ func (p *PrepareDiskJob) FromBytes(data []byte) error {
 }
 
 func (u *UpdateDataJob) Bytes() ([]byte, error) {
-	buff := make([]byte, 0, 12+u.PathLen+u.Total)
+	buff := make([]byte, 0, 24+int(u.PathLen)+len(u.FileData))
 	buffTotal := make([]byte, 8)
 	buffOffset := make([]byte, 8)
 	buffPathLen := make([]byte, 8)
@@ -124,10 +129,10 @@ func (u *UpdateDataJob) Bytes() ([]byte, error) {
 }
 
 func (u *UpdateDataJob) FromBytes(data []byte) error {
-	u.Total = binary.BigEndian.Uint64(data[0:8])
+	u.Total = binary.BigEndian.Uint64(data[0:8]) //TODO: use this to assert the validity of the data length
 	u.Offset = binary.BigEndian.Uint64(data[8:16])
 	u.PathLen = binary.BigEndian.Uint64(data[16:24])
 	u.Path = string(data[24 : u.PathLen+24])
-	u.FileData = data[24+u.PathLen : 24+u.PathLen+u.Total]
+	u.FileData = data[24+u.PathLen:]
 	return nil
 }

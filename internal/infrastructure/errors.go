@@ -47,3 +47,10 @@ type ErrDataQueueFilled struct {
 func (e *ErrDataQueueFilled) Error() string {
 	return "data queue has filled"
 }
+
+type ErrUnexpectedFileState struct {
+}
+
+func (e *ErrUnexpectedFileState) Error() string {
+	return "was not able to seek to correct position"
+}
