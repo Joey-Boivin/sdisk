@@ -1,0 +1,6 @@
+apiHost: localhost
+apiPort: 8080
+diskSizeMiB: 10240
+realTimeHost: localhost
+realTimePort: 10000
+serverRootFolder: disk

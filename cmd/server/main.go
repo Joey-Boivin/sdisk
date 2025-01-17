@@ -12,15 +12,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type ApiConfig struct {
-	Host     string `yaml:"host"`
-	Port     uint   `yaml:"port"`
-	DiskSize uint   `yaml:"diskSize"`
+type ServerConfig struct {
+	Host         string `yaml:"apiHost"`
+	Port         uint   `yaml:"apiPort"`
+	DiskSize     uint   `yaml:"diskSizeMiB"`
+	RealTimeHost string `yaml:"realTimeHost"`
+	RealTimePort uint   `yaml:"realTimePort"`
+	RootFolder   string `yaml:"serverRootFolder"`
 }
 
 func main() {
 	path := os.Getenv("SDISK_HOME")
-	path += "/configs/api.yml"
+	path += "/configs/server.yml"
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -29,7 +32,7 @@ func main() {
 
 	defer file.Close()
 
-	var conf ApiConfig
+	var conf ServerConfig
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&conf); err != nil {
 		log.Fatalf("Error decoding yaml file: %v", err)
@@ -37,7 +40,7 @@ func main() {
 
 	log.Printf("Server starting on %s:%d", conf.Host, conf.Port)
 
-	tcpserverconfig := infrastructure.NewDefaultTCPServerConfig()
+	tcpserverconfig := infrastructure.NewDefaultTCPServerConfig(conf.RealTimeHost, conf.RealTimePort)
 	s := infrastructure.NewTCPServer(tcpserverconfig)
 	go s.Run()
 

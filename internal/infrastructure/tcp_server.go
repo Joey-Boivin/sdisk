@@ -26,13 +26,13 @@ type TCPServerConfig struct {
 	port                 uint
 }
 
-func NewDefaultTCPServerConfig() *TCPServerConfig {
+func NewDefaultTCPServerConfig(host string, port uint) *TCPServerConfig {
 	return &TCPServerConfig{
 		maxConnections:       DEFAULT_MAX_CONNECTIONS,
 		maxQueuedConnections: DEFAULT_MAX_QUEUED_CONNECTIONS,
 		maxQueuedJobs:        DEFAULT_MAX_QUEUED_SERVER_JOBS,
-		address:              DEFAULT_ADDRESS,
-		port:                 DEFAULT_PORT,
+		address:              host,
+		port:                 port,
 	}
 }
 
