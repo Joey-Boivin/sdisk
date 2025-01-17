@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/Joey-Boivin/sdisk/internal/models"
 )
@@ -70,7 +71,7 @@ func (server *TCPServer) Run() {
 	}
 }
 
-func (server *TCPServer) PrepareDisk(disk *models.Disk) error {
+func (server *TCPServer) PrepareDisk(disk *models.Disk, user *models.User) error {
 	prepareDiskJob := PrepareDiskJob{
 		DiskSize: disk.GetSpaceLeft(),
 	}
@@ -84,14 +85,15 @@ func (server *TCPServer) PrepareDisk(disk *models.Disk) error {
 		DataSize: uint16(len(raw)),
 	}
 
-	userID := []byte(TEST_ID)  // TODO
-	copy(header.id[:], userID) //TODO
+	userID := user.GetID()
+	idAsBytes := userID.Bytes()
+	copy(header.id[:], idAsBytes)
 
 	job := new(Job)
 	job.Header = header
 	job.Data = raw
 
-	server.jobQueue <- job //TODO: handle max cap
+	server.jobQueue <- job
 
 	return nil
 }
@@ -145,9 +147,16 @@ func (server *TCPServer) prepareDisk(job *Job) error {
 		return err
 	}
 
-	err = os.Mkdir(os.Getenv("SDISK_HOME")+"/users", 0777)
+	userID, err := models.FromBytes(job.Header.id[:])
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	userDiskPath := os.Getenv("SDISK_ROOT") + "/" + userID.ToString()
+
+	err = os.Mkdir(userDiskPath, 0777)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -158,15 +167,33 @@ func (server *TCPServer) updateData(job *Job) error {
 	err := updateDataJob.FromBytes(job.Data)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	filePath := os.Getenv("SDISK_HOME") + "/users/" + updateDataJob.Path
+	userID, err := models.FromBytes(job.Header.id[:])
+	if err != nil {
+		return err
+	}
+
+	userDiskPath := os.Getenv("SDISK_ROOT") + "/" + userID.ToString()
+	info, err := os.Stat(userDiskPath)
+	if err != nil || !info.IsDir() {
+		return &ErrUserHasNoDisk{}
+	}
+
+	filePath := userDiskPath + updateDataJob.Path
+	dirPath := filepath.Dir(filePath)
+
+	err = os.MkdirAll(dirPath, 0777)
+	if err != nil {
+		return err
+	}
 
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 
 	if updateDataJob.Offset != 0 {
@@ -182,7 +209,7 @@ func (server *TCPServer) updateData(job *Job) error {
 	_, err = file.Write(updateDataJob.FileData)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil

@@ -47,16 +47,18 @@ func (r *UserRepositoryMock) GetByEmail(email string) *models.User {
 }
 
 type ServerMock struct {
-	FnPrepareDisk         func(d *models.Disk) error
-	PrepareDiskCalled     bool
-	PrepareDiskCalledWith *models.Disk
+	FnPrepareDisk             func(d *models.Disk) error
+	PrepareDiskCalled         bool
+	PrepareDiskCalledWithDisk *models.Disk
+	PrepareDiskCalledWithUser *models.User
 
 	FnRun     func()
 	RunCalled bool
 }
 
-func (s *ServerMock) PrepareDisk(d *models.Disk) error {
-	s.PrepareDiskCalledWith = d
+func (s *ServerMock) PrepareDisk(d *models.Disk, u *models.User) error {
+	s.PrepareDiskCalledWithDisk = d
+	s.PrepareDiskCalledWithUser = u
 	s.PrepareDiskCalled = true
 
 	if s.FnPrepareDisk != nil {

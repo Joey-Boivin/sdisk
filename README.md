@@ -21,6 +21,7 @@ make build lint test
 - delve
 - bruno
 - golangci-lint
+- python 3.9
 
 
 
@@ -38,6 +39,7 @@ pkgs.mkShell
         delve
         bruno
         golangci-lint
+        python39
     ];
 
     hardeningDisable = [ "fortify" ];
@@ -46,6 +48,7 @@ pkgs.mkShell
         export GOPATH=$(pwd)/go
         export PATH=$PATH:$GOPATH/bin
         export SDISK_HOME="$PWD"
+        export SDISK_ROOT="$SDISK_HOME/disk"
         '';
 }
 ```

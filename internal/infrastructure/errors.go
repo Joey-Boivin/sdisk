@@ -54,3 +54,10 @@ type ErrUnexpectedFileState struct {
 func (e *ErrUnexpectedFileState) Error() string {
 	return "was not able to seek to correct position"
 }
+
+type ErrUserHasNoDisk struct {
+}
+
+func (e *ErrUserHasNoDisk) Error() string {
+	return "user has no disk"
+}
