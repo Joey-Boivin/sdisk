@@ -8,7 +8,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
 type TCPClient struct {
@@ -17,6 +20,7 @@ type TCPClient struct {
 	port       uint
 	connection *Connection
 	syncPath   string
+	userID     models.UserID
 }
 
 type TCPClientConfig struct {
@@ -24,9 +28,10 @@ type TCPClientConfig struct {
 	address       string
 	port          uint
 	syncPath      string
+	userID        models.UserID
 }
 
-func NewDefaultTCPClientConfig() *TCPClientConfig {
+func NewDefaultTCPClientConfig(userID models.UserID) *TCPClientConfig {
 	syncPath := os.Getenv("SDISK_HOME") + DEFAULT_CLIENT_FOLDER
 
 	defaultClientConfig := TCPClientConfig{
@@ -34,6 +39,7 @@ func NewDefaultTCPClientConfig() *TCPClientConfig {
 		address:       DEFAULT_ADDRESS,
 		port:          DEFAULT_PORT,
 		syncPath:      syncPath,
+		userID:        userID,
 	}
 
 	return &defaultClientConfig
@@ -55,6 +61,7 @@ func NewTCPClient(config *TCPClientConfig) *TCPClient {
 		address:  config.address,
 		port:     config.port,
 		syncPath: config.syncPath,
+		userID:   config.userID,
 	}
 
 	connectionConfig := NewDefaultConnectionConfig(net, client.jobQueue)
@@ -98,6 +105,9 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 	entry := file.entry
 
 	info, err := entry.Info()
+
+	path := strings.TrimPrefix(file.path, client.syncPath)
+
 	if err != nil {
 		panic(err)
 	}
@@ -123,8 +133,7 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 		}
 
 		read, err = f.Read(fileContentBuffer)
-		//fmt.Printf("read %d bytes from file\n", read)
-		//fmt.Printf("read %s\n", string(fileContentBuffer))
+
 		if err != nil {
 			if err != io.EOF {
 				panic(err)
@@ -134,25 +143,26 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 		updateJob := UpdateDataJob{
 			Total:    uint64(info.Size()),
 			Offset:   uint64(read),
-			PathLen:  uint64(len(info.Name())),
-			Path:     info.Name(),
+			PathLen:  uint64(len(path)),
+			Path:     path,
 			FileData: fileContentBuffer,
 		}
 
-		raw, err := updateJob.Bytes() //THE BHUG IS HERE
+		raw, err := updateJob.Bytes()
 
 		if err != nil {
 			panic(err)
 		}
 
 		header := JobHeader{
-			DataSize: uint16(len(raw)), //THE BUG IS HERE
+			DataSize: uint16(len(raw)),
 			Version:  VERSION,
 			Encoding: EncodingNone,
 			Opcode:   UpdateData,
 		}
 
-		copy(header.id[:], []byte(TEST_ID))
+		idAsBytes := client.userID.Bytes()
+		copy(header.id[:], idAsBytes)
 
 		job := Job{
 			Header: header,

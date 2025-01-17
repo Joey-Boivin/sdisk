@@ -10,8 +10,6 @@ import (
 	"github.com/smallnest/ringbuffer"
 )
 
-const DEFAULT_QUEUE_SIZE_BYTES = (1024 * 64) - 1 // 64 KB
-
 type Connection struct {
 	conn               net.Conn
 	jobQueue           chan *Job
@@ -45,16 +43,25 @@ func (connection *Connection) Read() {
 
 	for {
 		buff := make([]byte, connection.dataQueueSizeBytes)
-		readDeadline := time.Now().Add(100 * time.Millisecond)
+		readDeadline := time.Now().Add(DEFAULT_TIMEOUT_MS * time.Millisecond)
 		_ = connection.conn.SetDeadline(readDeadline)
 		read, err := connection.conn.Read(buff)
 
-		if err != nil && err != io.EOF && !os.IsTimeout(err) {
-			panic(err)
+		if err != nil {
+			if err == io.EOF {
+				// TODO: cleanup disconnect
+				break
+			}
+
+			if !os.IsTimeout(err) {
+				// TODO: error channel? + disconnect
+				panic(err)
+			}
 		}
 
 		wrote, err := ring.Write(buff[:read])
 		if err != nil {
+			// TODO: error channel? + disconnect
 			panic(err)
 		}
 
@@ -68,29 +75,34 @@ func (connection *Connection) Read() {
 		var h JobHeader
 		_, err = ring.Peek(buff[:HEADER_SIZE])
 		if err != nil {
+			// TODO: error channel? + disconnect
 			panic(err)
 		}
 
 		err = h.fromBytes(buff[:HEADER_SIZE])
 		if err != nil {
+			// TODO: error channel? + disconnect
 			panic(err)
 		}
 
 		nextPacketLength := int(h.DataSize) + HEADER_SIZE
 
 		if ring.Length() < nextPacketLength {
+			// TODO: error channel? + disconnect
 			continue
 		}
 
 		readFromRing, err := ring.Read(buff[:nextPacketLength])
 		fmt.Printf("read %d from ring buff\n", readFromRing)
 		if err != nil {
+			// TODO: error channel? + disconnect
 			panic(err)
 		}
 
 		var job Job
 		err = job.FromBytes(buff[:nextPacketLength])
 		if err != nil {
+			// TODO: error channel? + disconnect
 			panic(err)
 		}
 		connection.jobQueue <- &job

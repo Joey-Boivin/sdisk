@@ -7,7 +7,6 @@ import (
 const VERSION = 0
 const HEADER_SIZE = 21
 const ID_SIZE = 16
-const TEST_ID = "1234567891234567" //TODO
 
 type PacketOpcode byte
 type PacketEncoding byte
@@ -57,7 +56,7 @@ func (header *JobHeader) fromBytes(data []byte) error {
 	header.Version = data[0]
 	header.Opcode = PacketOpcode(data[1])
 	header.Encoding = PacketEncoding(data[2])
-	copy(header.id[:], data)
+	copy(header.id[:], data[3:ID_SIZE+3])
 	header.DataSize = binary.BigEndian.Uint16(data[3+ID_SIZE : 5+ID_SIZE])
 	return nil
 }

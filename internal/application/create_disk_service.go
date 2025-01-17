@@ -37,5 +37,5 @@ func (c *CreateDiskService) CreateDisk(id string) error {
 		return err
 	}
 
-	return c.realTimeServer.PrepareDisk(d)
+	return c.realTimeServer.PrepareDisk(d, u)
 }
