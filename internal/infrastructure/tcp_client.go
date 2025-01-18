@@ -31,13 +31,13 @@ type TCPClientConfig struct {
 	userID        models.UserID
 }
 
-func NewDefaultTCPClientConfig(userID models.UserID) *TCPClientConfig {
-	syncPath := os.Getenv("SDISK_HOME") + DEFAULT_CLIENT_FOLDER
+func NewDefaultTCPClientConfig(userID models.UserID, host string, port uint, clientRootFolder string) *TCPClientConfig {
+	syncPath := os.Getenv("SDISK_HOME") + "/" + clientRootFolder
 
 	defaultClientConfig := TCPClientConfig{
 		maxQueuedJobs: DEFAULT_MAX_QUEUED_CLIENT_JOBS,
-		address:       DEFAULT_ADDRESS,
-		port:          DEFAULT_PORT,
+		address:       host,
+		port:          port,
 		syncPath:      syncPath,
 		userID:        userID,
 	}
@@ -71,7 +71,6 @@ func NewTCPClient(config *TCPClientConfig) *TCPClient {
 }
 
 func (client *TCPClient) Run() {
-	//TODO: This will run continuisly eventually, but only runs once for now
 	files := client.walkDirectory()
 
 	for _, file := range files {
@@ -172,7 +171,6 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 		toSend := job.Bytes()
 		wrote, err := client.connection.Write(toSend)
 		sent += wrote
-		fmt.Printf("sent a packet of total length %d and data length %d\n", wrote, len(raw))
 
 		updateJob.Offset += uint64(wrote)
 
@@ -182,6 +180,4 @@ func (client *TCPClient) sendFile(file *FileToSend) {
 
 		total -= read
 	}
-
-	fmt.Printf("file sent complete: %s\n", info.Name())
 }

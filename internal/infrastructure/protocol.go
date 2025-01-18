@@ -128,7 +128,7 @@ func (u *UpdateDataJob) Bytes() ([]byte, error) {
 }
 
 func (u *UpdateDataJob) FromBytes(data []byte) error {
-	u.Total = binary.BigEndian.Uint64(data[0:8]) //TODO: use this to assert the validity of the data length
+	u.Total = binary.BigEndian.Uint64(data[0:8])
 	u.Offset = binary.BigEndian.Uint64(data[8:16])
 	u.PathLen = binary.BigEndian.Uint64(data[16:24])
 	u.Path = string(data[24 : u.PathLen+24])
