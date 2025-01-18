@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"math"
@@ -99,6 +100,7 @@ func sendFile(file *FileToSend, syncPath string, connection *Connection, userID 
 
 		toSend := packet.Bytes()
 		wrote, err := connection.Write(toSend)
+		fmt.Printf("wrote %d\n", wrote)
 		sent += wrote
 
 		updatePacket.Offset += uint64(wrote)

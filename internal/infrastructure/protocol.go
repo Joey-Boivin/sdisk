@@ -14,6 +14,7 @@ type PacketEncoding byte
 const (
 	PrepareDisk PacketOpcode = iota
 	UpdateData
+	PullData
 )
 
 const (

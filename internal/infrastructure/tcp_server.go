@@ -9,8 +9,13 @@ import (
 	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
+type Transaction struct {
+	packet *Packet
+	from   string
+}
+
 type TCPServer struct {
-	packetQueue       chan *Packet
+	transactionQueue  chan *Transaction
 	connectionsQueue  chan net.Conn
 	maxConnections    uint
 	activeConnections map[string]*Connection
@@ -19,30 +24,30 @@ type TCPServer struct {
 }
 
 type TCPServerConfig struct {
-	maxConnections       uint
-	maxQueuedPackets     uint
-	maxQueuedConnections uint
-	address              string
-	port                 uint
+	maxConnections        uint
+	maxQueuedTransactions uint
+	maxQueuedConnections  uint
+	address               string
+	port                  uint
 }
 
 func NewDefaultTCPServerConfig(host string, port uint) *TCPServerConfig {
 	return &TCPServerConfig{
-		maxConnections:       DEFAULT_MAX_CONNECTIONS,
-		maxQueuedConnections: DEFAULT_MAX_QUEUED_CONNECTIONS,
-		maxQueuedPackets:     DEFAULT_MAX_QUEUED_SERVER_PACKETS,
-		address:              host,
-		port:                 port,
+		maxConnections:        DEFAULT_MAX_CONNECTIONS,
+		maxQueuedConnections:  DEFAULT_MAX_QUEUED_CONNECTIONS,
+		maxQueuedTransactions: DEFAULT_MAX_QUEUED_SERVER_TRANSACTIONS,
+		address:               host,
+		port:                  port,
 	}
 }
 
 func NewTCPServer(config *TCPServerConfig) *TCPServer {
-	if config == nil || config.maxQueuedConnections == 0 || config.maxQueuedPackets == 0 {
+	if config == nil || config.maxQueuedConnections == 0 || config.maxQueuedTransactions == 0 {
 		return nil
 	}
 
 	return &TCPServer{
-		packetQueue:       make(chan *Packet, config.maxQueuedPackets),
+		transactionQueue:  make(chan *Transaction, config.maxQueuedTransactions),
 		connectionsQueue:  make(chan net.Conn, config.maxQueuedConnections),
 		activeConnections: make(map[string]*Connection),
 		maxConnections:    config.maxConnections,
@@ -62,8 +67,8 @@ func (server *TCPServer) Run() {
 				fmt.Println(err)
 			}
 
-		case packet := <-server.packetQueue:
-			err := server.handlePacket(packet)
+		case transaction := <-server.transactionQueue:
+			err := server.handlePacket(transaction)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -93,7 +98,13 @@ func (server *TCPServer) PrepareDisk(disk *models.Disk, user *models.User) error
 	packet.Header = header
 	packet.Payload = raw
 
-	server.packetQueue <- packet
+	transaction := Transaction{
+		packet: packet,
+		from:   "localhost",
+		//withId: userID.ToString(), TODO?
+	}
+
+	server.transactionQueue <- &transaction
 
 	return nil
 }
@@ -120,7 +131,7 @@ func (server *TCPServer) addConnection(conn net.Conn) error {
 		return &ErrMaximumClientsReached{}
 	}
 
-	conf := NewDefaultConnectionConfig(conn, server.packetQueue)
+	conf := NewDefaultConnectionConfig(conn, server.transactionQueue)
 	connection := NewConnection(conf)
 	server.activeConnections[conn.LocalAddr().String()] = connection
 	go connection.Read()
@@ -128,26 +139,28 @@ func (server *TCPServer) addConnection(conn net.Conn) error {
 	return nil
 }
 
-func (server *TCPServer) handlePacket(packet *Packet) error {
-	switch packet.Header.Opcode {
+func (server *TCPServer) handlePacket(transaction *Transaction) error {
+	switch transaction.packet.Header.Opcode {
 	case PrepareDisk:
-		return server.prepareDisk(packet)
+		return server.prepareDisk(transaction)
 	case UpdateData:
-		return server.updateData(packet)
+		return server.updateData(transaction)
+	case PullData:
+		return server.pullData(transaction)
 	}
 
-	return &ErrUnknownPacket{Opcode: uint8(packet.Header.Opcode)}
+	return &ErrUnknownPacket{Opcode: uint8(transaction.packet.Header.Opcode)}
 }
 
-func (server *TCPServer) prepareDisk(packet *Packet) error {
+func (server *TCPServer) prepareDisk(transaction *Transaction) error {
 	var prepareDiskPayload PrepareDiskPayload
-	err := prepareDiskPayload.FromBytes(packet.Payload)
+	err := prepareDiskPayload.FromBytes(transaction.packet.Payload)
 
 	if err != nil {
 		return err
 	}
 
-	userID, err := models.FromBytes(packet.Header.id[:])
+	userID, err := models.FromBytes(transaction.packet.Header.id[:])
 	if err != nil {
 		return err
 	}
@@ -162,15 +175,15 @@ func (server *TCPServer) prepareDisk(packet *Packet) error {
 	return nil
 }
 
-func (server *TCPServer) updateData(packet *Packet) error {
+func (server *TCPServer) updateData(transaction *Transaction) error {
 	var updateDataPayload UpdateDataPayload
-	err := updateDataPayload.FromBytes(packet.Payload)
+	err := updateDataPayload.FromBytes(transaction.packet.Payload)
 
 	if err != nil {
 		return err
 	}
 
-	userID, err := models.FromBytes(packet.Header.id[:])
+	userID, err := models.FromBytes(transaction.packet.Header.id[:])
 	if err != nil {
 		return err
 	}
@@ -210,6 +223,32 @@ func (server *TCPServer) updateData(packet *Packet) error {
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (server *TCPServer) pullData(transaction *Transaction) error {
+	userID, err := models.FromBytes(transaction.packet.Header.id[:])
+	if err != nil {
+		return err
+	}
+
+	userDiskPath := os.Getenv("SDISK_ROOT") + "/" + userID.ToString()
+	info, err := os.Stat(userDiskPath)
+	if err != nil || !info.IsDir() {
+		return &ErrUserHasNoDisk{}
+	}
+
+	files := walkDirectory(userDiskPath)
+
+	conn := server.activeConnections[transaction.from]
+	if conn == nil {
+		return &ErrDisconnected{}
+	}
+
+	for _, file := range files {
+		sendFile(&file, userDiskPath, conn, userID)
 	}
 
 	return nil

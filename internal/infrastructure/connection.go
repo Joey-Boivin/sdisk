@@ -13,28 +13,28 @@ import (
 
 type Connection struct {
 	conn               net.Conn
-	packetQueue        chan *Packet
+	transactionQueue   chan *Transaction
 	dataQueueSizeBytes uint
 }
 
 type ConnectionConfig struct {
 	conn               net.Conn
 	dataQueueSizeBytes uint
-	packetQueue        chan *Packet
+	transactionQueue   chan *Transaction
 }
 
-func NewDefaultConnectionConfig(conn net.Conn, packetQueue chan *Packet) *ConnectionConfig {
+func NewDefaultConnectionConfig(conn net.Conn, transactionQueue chan *Transaction) *ConnectionConfig {
 	return &ConnectionConfig{
 		conn:               conn,
 		dataQueueSizeBytes: DEFAULT_QUEUE_SIZE_BYTES,
-		packetQueue:        packetQueue,
+		transactionQueue:   transactionQueue,
 	}
 }
 
 func NewConnection(config *ConnectionConfig) *Connection {
 	return &Connection{
 		conn:               config.conn,
-		packetQueue:        config.packetQueue,
+		transactionQueue:   config.transactionQueue,
 		dataQueueSizeBytes: config.dataQueueSizeBytes,
 	}
 }
@@ -99,7 +99,12 @@ func (connection *Connection) Read() {
 			log.Fatal(err.Error())
 		}
 
-		connection.packetQueue <- &packet
+		transaction := Transaction{
+			packet: &packet,
+			from:   connection.conn.LocalAddr().String(),
+		}
+
+		connection.transactionQueue <- &transaction
 	}
 }
 

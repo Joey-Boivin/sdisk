@@ -61,3 +61,10 @@ type ErrUserHasNoDisk struct {
 func (e *ErrUserHasNoDisk) Error() string {
 	return "user has no disk"
 }
+
+type ErrDisconnected struct {
+}
+
+func (e *ErrDisconnected) Error() string {
+	return "disconnected"
+}
