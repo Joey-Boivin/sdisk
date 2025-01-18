@@ -13,28 +13,28 @@ import (
 
 type Connection struct {
 	conn               net.Conn
-	jobQueue           chan *Job
+	packetQueue        chan *Packet
 	dataQueueSizeBytes uint
 }
 
 type ConnectionConfig struct {
 	conn               net.Conn
 	dataQueueSizeBytes uint
-	jobQueue           chan *Job
+	packetQueue        chan *Packet
 }
 
-func NewDefaultConnectionConfig(conn net.Conn, jobQueue chan *Job) *ConnectionConfig {
+func NewDefaultConnectionConfig(conn net.Conn, packetQueue chan *Packet) *ConnectionConfig {
 	return &ConnectionConfig{
 		conn:               conn,
 		dataQueueSizeBytes: DEFAULT_QUEUE_SIZE_BYTES,
-		jobQueue:           jobQueue,
+		packetQueue:        packetQueue,
 	}
 }
 
 func NewConnection(config *ConnectionConfig) *Connection {
 	return &Connection{
 		conn:               config.conn,
-		jobQueue:           config.jobQueue,
+		packetQueue:        config.packetQueue,
 		dataQueueSizeBytes: config.dataQueueSizeBytes,
 	}
 }
@@ -68,7 +68,7 @@ func (connection *Connection) Read() {
 			continue
 		}
 
-		var h JobHeader
+		var h PacketHeader
 		peeked, err := ring.Peek(buff[:HEADER_SIZE])
 		if err != nil {
 			log.Fatalf("expected to peek %d and peeked %d with the following error:\n%s", HEADER_SIZE, peeked, err)
@@ -93,13 +93,13 @@ func (connection *Connection) Read() {
 			continue
 		}
 
-		var job Job
-		err = job.FromBytes(buff[:nextPacketLength])
+		var packet Packet
+		err = packet.FromBytes(buff[:nextPacketLength])
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 
-		connection.jobQueue <- &job
+		connection.packetQueue <- &packet
 	}
 }
 

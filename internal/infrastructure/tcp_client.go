@@ -10,7 +10,7 @@ import (
 )
 
 type TCPClient struct {
-	jobQueue   chan *Job
+	packet   chan *Packet
 	address    string
 	port       uint
 	connection *Connection
@@ -19,7 +19,7 @@ type TCPClient struct {
 }
 
 type TCPClientConfig struct {
-	maxQueuedJobs uint
+	maxQueuedPackets uint
 	address       string
 	port          uint
 	syncPath      string
@@ -30,7 +30,7 @@ func NewDefaultTCPClientConfig(userID models.UserID, host string, port uint, cli
 	syncPath := os.Getenv("SDISK_HOME") + "/" + clientRootFolder
 
 	defaultClientConfig := TCPClientConfig{
-		maxQueuedJobs: DEFAULT_MAX_QUEUED_CLIENT_JOBS,
+		maxQueuedPackets: DEFAULT_MAX_QUEUED_CLIENT_PACKETS,
 		address:       host,
 		port:          port,
 		syncPath:      syncPath,
@@ -41,7 +41,7 @@ func NewDefaultTCPClientConfig(userID models.UserID, host string, port uint, cli
 }
 
 func NewTCPClient(config *TCPClientConfig) *TCPClient {
-	if config == nil || config.maxQueuedJobs == 0 {
+	if config == nil || config.maxQueuedPackets == 0 {
 		return nil
 	}
 
@@ -52,14 +52,14 @@ func NewTCPClient(config *TCPClientConfig) *TCPClient {
 	}
 
 	client := TCPClient{
-		jobQueue: make(chan *Job, config.maxQueuedJobs),
+		packet: make(chan *Packet, config.maxQueuedPackets),
 		address:  config.address,
 		port:     config.port,
 		syncPath: config.syncPath,
 		userID:   config.userID,
 	}
 
-	connectionConfig := NewDefaultConnectionConfig(net, client.jobQueue)
+	connectionConfig := NewDefaultConnectionConfig(net, client.packet)
 	client.connection = NewConnection(connectionConfig)
 
 	return &client

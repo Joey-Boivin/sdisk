@@ -52,7 +52,7 @@ func setup() {
 
 	serverMockThatFails = mocks.ServerMock{FnPrepareDisk: func(d *models.Disk) error {
 		anyOpcode := 12
-		return &infrastructure.ErrUnknownJob{Opcode: uint8(anyOpcode)}
+		return &infrastructure.ErrUnknownPacket{Opcode: uint8(anyOpcode)}
 	}}
 
 	registerService = application.NewRegisterService(&userRepoWithUserMock)

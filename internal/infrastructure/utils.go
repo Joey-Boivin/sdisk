@@ -68,7 +68,7 @@ func sendFile(file *FileToSend, syncPath string, connection *Connection, userID 
 			}
 		}
 
-		updateJob := UpdateDataJob{
+		updatePacket := UpdateDataPayload{
 			Total:    uint64(info.Size()),
 			Offset:   uint64(read),
 			PathLen:  uint64(len(path)),
@@ -76,13 +76,13 @@ func sendFile(file *FileToSend, syncPath string, connection *Connection, userID 
 			FileData: fileContentBuffer,
 		}
 
-		raw, err := updateJob.Bytes()
+		raw, err := updatePacket.Bytes()
 
 		if err != nil {
 			panic(err)
 		}
 
-		header := JobHeader{
+		header := PacketHeader{
 			DataSize: uint16(len(raw)),
 			Version:  VERSION,
 			Encoding: EncodingNone,
@@ -92,16 +92,16 @@ func sendFile(file *FileToSend, syncPath string, connection *Connection, userID 
 		idAsBytes := userID.Bytes()
 		copy(header.id[:], idAsBytes)
 
-		job := Job{
-			Header: header,
-			Data:   raw,
+		packet := Packet{
+			Header:  header,
+			Payload: raw,
 		}
 
-		toSend := job.Bytes()
+		toSend := packet.Bytes()
 		wrote, err := connection.Write(toSend)
 		sent += wrote
 
-		updateJob.Offset += uint64(wrote)
+		updatePacket.Offset += uint64(wrote)
 
 		if err != nil {
 			panic(err)
