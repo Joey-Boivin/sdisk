@@ -14,6 +14,7 @@ type PacketEncoding byte
 const (
 	PrepareDisk PacketOpcode = iota
 	UpdateData
+	PullData
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 	EncodingUnused3
 )
 
-type JobHeader struct {
+type PacketHeader struct {
 	Version  byte
 	Opcode   PacketOpcode
 	Encoding PacketEncoding
@@ -31,16 +32,16 @@ type JobHeader struct {
 	DataSize uint16
 }
 
-type Job struct {
-	Header JobHeader
-	Data   []byte
+type Packet struct {
+	Header  PacketHeader
+	Payload []byte
 }
 
-type PrepareDiskJob struct {
+type PrepareDiskPayload struct {
 	DiskSize uint64
 }
 
-type UpdateDataJob struct {
+type UpdateDataPayload struct {
 	Total    uint64
 	Offset   uint64
 	PathLen  uint64
@@ -48,7 +49,7 @@ type UpdateDataJob struct {
 	FileData []byte
 }
 
-func (header *JobHeader) fromBytes(data []byte) error {
+func (header *PacketHeader) fromBytes(data []byte) error {
 	if data[0] != VERSION {
 		return &ErrUnsuportedProtocolVersion{ReceivedVersion: data[0]}
 	}
@@ -61,12 +62,12 @@ func (header *JobHeader) fromBytes(data []byte) error {
 	return nil
 }
 
-func (j *Job) FromBytes(data []byte) error {
+func (packet *Packet) FromBytes(data []byte) error {
 	if len(data) < HEADER_SIZE {
 		return &ErrUnexpectedHeaderLength{ReceivedHeaderLength: len(data)}
 	}
 
-	var header JobHeader
+	var header PacketHeader
 	err := header.fromBytes(data[:HEADER_SIZE])
 	if err != nil {
 		return err
@@ -76,33 +77,33 @@ func (j *Job) FromBytes(data []byte) error {
 		return &ErrIncompletePacket{}
 	}
 
-	j.Header = header
-	j.Data = data[HEADER_SIZE : HEADER_SIZE+j.Header.DataSize]
+	packet.Header = header
+	packet.Payload = data[HEADER_SIZE : HEADER_SIZE+packet.Header.DataSize]
 
 	return nil
 }
 
-func (j *Job) Bytes() []byte {
-	buff := make([]byte, 0, HEADER_SIZE+len(j.Data))
+func (packet *Packet) Bytes() []byte {
+	buff := make([]byte, 0, HEADER_SIZE+len(packet.Payload))
 	buffLength := make([]byte, 2)
-	binary.BigEndian.PutUint16(buffLength, j.Header.DataSize)
+	binary.BigEndian.PutUint16(buffLength, packet.Header.DataSize)
 
-	buff = append(buff, j.Header.Version)
-	buff = append(buff, byte(j.Header.Opcode))
-	buff = append(buff, byte(j.Header.Encoding))
-	buff = append(buff, j.Header.id[:]...)
+	buff = append(buff, packet.Header.Version)
+	buff = append(buff, byte(packet.Header.Opcode))
+	buff = append(buff, byte(packet.Header.Encoding))
+	buff = append(buff, packet.Header.id[:]...)
 	buff = append(buff, buffLength...)
 
-	return append(buff, j.Data...)
+	return append(buff, packet.Payload...)
 }
 
-func (p *PrepareDiskJob) Bytes() []byte {
+func (p *PrepareDiskPayload) Bytes() []byte {
 	buff := make([]byte, 8)
 	binary.BigEndian.PutUint64(buff, p.DiskSize)
 	return buff
 }
 
-func (p *PrepareDiskJob) FromBytes(data []byte) error {
+func (p *PrepareDiskPayload) FromBytes(data []byte) error {
 	if len(data) < 8 {
 		return &ErrIncompletePacket{}
 	}
@@ -111,7 +112,7 @@ func (p *PrepareDiskJob) FromBytes(data []byte) error {
 	return nil
 }
 
-func (u *UpdateDataJob) Bytes() ([]byte, error) {
+func (u *UpdateDataPayload) Bytes() ([]byte, error) {
 	buff := make([]byte, 0, 24+int(u.PathLen)+len(u.FileData))
 	buffTotal := make([]byte, 8)
 	buffOffset := make([]byte, 8)
@@ -127,7 +128,7 @@ func (u *UpdateDataJob) Bytes() ([]byte, error) {
 	return append(buff, u.FileData...), nil
 }
 
-func (u *UpdateDataJob) FromBytes(data []byte) error {
+func (u *UpdateDataPayload) FromBytes(data []byte) error {
 	u.Total = binary.BigEndian.Uint64(data[0:8])
 	u.Offset = binary.BigEndian.Uint64(data[8:16])
 	u.PathLen = binary.BigEndian.Uint64(data[16:24])

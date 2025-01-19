@@ -111,7 +111,7 @@ func (h *UserHandler) CreateDiskResource(writer http.ResponseWriter, req *http.R
 			writer.WriteHeader(http.StatusNotFound)
 			return
 
-		case *infrastructure.ErrUnknownJob:
+		case *infrastructure.ErrUnknownPacket:
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}

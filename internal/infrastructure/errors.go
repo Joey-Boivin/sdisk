@@ -2,12 +2,12 @@ package infrastructure
 
 import "fmt"
 
-type ErrUnknownJob struct {
+type ErrUnknownPacket struct {
 	Opcode uint8
 }
 
-func (e *ErrUnknownJob) Error() string {
-	return fmt.Sprintf("this job with opcode %d is unknown", e.Opcode)
+func (e *ErrUnknownPacket) Error() string {
+	return fmt.Sprintf("this packet with opcode %d is unknown", e.Opcode)
 }
 
 type ErrUnsuportedProtocolVersion struct {
@@ -60,4 +60,11 @@ type ErrUserHasNoDisk struct {
 
 func (e *ErrUserHasNoDisk) Error() string {
 	return "user has no disk"
+}
+
+type ErrDisconnected struct {
+}
+
+func (e *ErrDisconnected) Error() string {
+	return "disconnected"
 }

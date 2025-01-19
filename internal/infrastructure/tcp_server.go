@@ -9,8 +9,13 @@ import (
 	"github.com/Joey-Boivin/sdisk/internal/models"
 )
 
+type Transaction struct {
+	packet *Packet
+	from   string
+}
+
 type TCPServer struct {
-	jobQueue          chan *Job
+	transactionQueue  chan *Transaction
 	connectionsQueue  chan net.Conn
 	maxConnections    uint
 	activeConnections map[string]*Connection
@@ -19,30 +24,30 @@ type TCPServer struct {
 }
 
 type TCPServerConfig struct {
-	maxConnections       uint
-	maxQueuedJobs        uint
-	maxQueuedConnections uint
-	address              string
-	port                 uint
+	maxConnections        uint
+	maxQueuedTransactions uint
+	maxQueuedConnections  uint
+	address               string
+	port                  uint
 }
 
 func NewDefaultTCPServerConfig(host string, port uint) *TCPServerConfig {
 	return &TCPServerConfig{
-		maxConnections:       DEFAULT_MAX_CONNECTIONS,
-		maxQueuedConnections: DEFAULT_MAX_QUEUED_CONNECTIONS,
-		maxQueuedJobs:        DEFAULT_MAX_QUEUED_SERVER_JOBS,
-		address:              host,
-		port:                 port,
+		maxConnections:        DEFAULT_MAX_CONNECTIONS,
+		maxQueuedConnections:  DEFAULT_MAX_QUEUED_CONNECTIONS,
+		maxQueuedTransactions: DEFAULT_MAX_QUEUED_SERVER_TRANSACTIONS,
+		address:               host,
+		port:                  port,
 	}
 }
 
 func NewTCPServer(config *TCPServerConfig) *TCPServer {
-	if config == nil || config.maxQueuedConnections == 0 || config.maxQueuedJobs == 0 {
+	if config == nil || config.maxQueuedConnections == 0 || config.maxQueuedTransactions == 0 {
 		return nil
 	}
 
 	return &TCPServer{
-		jobQueue:          make(chan *Job, config.maxQueuedJobs),
+		transactionQueue:  make(chan *Transaction, config.maxQueuedTransactions),
 		connectionsQueue:  make(chan net.Conn, config.maxQueuedConnections),
 		activeConnections: make(map[string]*Connection),
 		maxConnections:    config.maxConnections,
@@ -62,8 +67,8 @@ func (server *TCPServer) Run() {
 				fmt.Println(err)
 			}
 
-		case job := <-server.jobQueue:
-			err := server.handleJob(job)
+		case transaction := <-server.transactionQueue:
+			err := server.handlePacket(transaction)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -72,13 +77,13 @@ func (server *TCPServer) Run() {
 }
 
 func (server *TCPServer) PrepareDisk(disk *models.Disk, user *models.User) error {
-	prepareDiskJob := PrepareDiskJob{
+	prepareDiskPayload := PrepareDiskPayload{
 		DiskSize: disk.GetSpaceLeft(),
 	}
 
-	raw := prepareDiskJob.Bytes()
+	raw := prepareDiskPayload.Bytes()
 
-	header := JobHeader{
+	header := PacketHeader{
 		Version:  VERSION,
 		Opcode:   PrepareDisk,
 		Encoding: EncodingNone,
@@ -89,11 +94,17 @@ func (server *TCPServer) PrepareDisk(disk *models.Disk, user *models.User) error
 	idAsBytes := userID.Bytes()
 	copy(header.id[:], idAsBytes)
 
-	job := new(Job)
-	job.Header = header
-	job.Data = raw
+	packet := new(Packet)
+	packet.Header = header
+	packet.Payload = raw
 
-	server.jobQueue <- job
+	transaction := Transaction{
+		packet: packet,
+		from:   "localhost",
+		//withId: userID.ToString(), TODO?
+	}
+
+	server.transactionQueue <- &transaction
 
 	return nil
 }
@@ -120,7 +131,7 @@ func (server *TCPServer) addConnection(conn net.Conn) error {
 		return &ErrMaximumClientsReached{}
 	}
 
-	conf := NewDefaultConnectionConfig(conn, server.jobQueue)
+	conf := NewDefaultConnectionConfig(conn, server.transactionQueue)
 	connection := NewConnection(conf)
 	server.activeConnections[conn.LocalAddr().String()] = connection
 	go connection.Read()
@@ -128,26 +139,28 @@ func (server *TCPServer) addConnection(conn net.Conn) error {
 	return nil
 }
 
-func (server *TCPServer) handleJob(job *Job) error {
-	switch job.Header.Opcode {
+func (server *TCPServer) handlePacket(transaction *Transaction) error {
+	switch transaction.packet.Header.Opcode {
 	case PrepareDisk:
-		return server.prepareDisk(job)
+		return server.prepareDisk(transaction)
 	case UpdateData:
-		return server.updateData(job)
+		return server.updateData(transaction)
+	case PullData:
+		return server.pullData(transaction)
 	}
 
-	return &ErrUnknownJob{Opcode: uint8(job.Header.Opcode)}
+	return &ErrUnknownPacket{Opcode: uint8(transaction.packet.Header.Opcode)}
 }
 
-func (server *TCPServer) prepareDisk(job *Job) error {
-	var prepareDiskJob PrepareDiskJob
-	err := prepareDiskJob.FromBytes(job.Data)
+func (server *TCPServer) prepareDisk(transaction *Transaction) error {
+	var prepareDiskPayload PrepareDiskPayload
+	err := prepareDiskPayload.FromBytes(transaction.packet.Payload)
 
 	if err != nil {
 		return err
 	}
 
-	userID, err := models.FromBytes(job.Header.id[:])
+	userID, err := models.FromBytes(transaction.packet.Header.id[:])
 	if err != nil {
 		return err
 	}
@@ -162,15 +175,15 @@ func (server *TCPServer) prepareDisk(job *Job) error {
 	return nil
 }
 
-func (server *TCPServer) updateData(job *Job) error {
-	var updateDataJob UpdateDataJob
-	err := updateDataJob.FromBytes(job.Data)
+func (server *TCPServer) updateData(transaction *Transaction) error {
+	var updateDataPayload UpdateDataPayload
+	err := updateDataPayload.FromBytes(transaction.packet.Payload)
 
 	if err != nil {
 		return err
 	}
 
-	userID, err := models.FromBytes(job.Header.id[:])
+	userID, err := models.FromBytes(transaction.packet.Header.id[:])
 	if err != nil {
 		return err
 	}
@@ -181,7 +194,7 @@ func (server *TCPServer) updateData(job *Job) error {
 		return &ErrUserHasNoDisk{}
 	}
 
-	filePath := userDiskPath + updateDataJob.Path
+	filePath := userDiskPath + updateDataPayload.Path
 	dirPath := filepath.Dir(filePath)
 
 	err = os.MkdirAll(dirPath, 0777)
@@ -196,20 +209,46 @@ func (server *TCPServer) updateData(job *Job) error {
 
 	defer file.Close()
 
-	if updateDataJob.Offset != 0 {
-		seeked, err := file.Seek(int64(updateDataJob.Offset), 0)
+	if updateDataPayload.Offset != 0 {
+		seeked, err := file.Seek(int64(updateDataPayload.Offset), 0)
 		if err != nil {
 			return err
 		}
-		if seeked != int64(updateDataJob.Offset) {
+		if seeked != int64(updateDataPayload.Offset) {
 			return &ErrUnexpectedFileState{}
 		}
 	}
 
-	_, err = file.Write(updateDataJob.FileData)
+	_, err = file.Write(updateDataPayload.FileData)
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (server *TCPServer) pullData(transaction *Transaction) error {
+	userID, err := models.FromBytes(transaction.packet.Header.id[:])
+	if err != nil {
+		return err
+	}
+
+	userDiskPath := os.Getenv("SDISK_ROOT") + "/" + userID.ToString()
+	info, err := os.Stat(userDiskPath)
+	if err != nil || !info.IsDir() {
+		return &ErrUserHasNoDisk{}
+	}
+
+	files := walkDirectory(userDiskPath)
+
+	conn := server.activeConnections[transaction.from]
+	if conn == nil {
+		return &ErrDisconnected{}
+	}
+
+	for _, file := range files {
+		sendFile(&file, userDiskPath, conn, userID)
 	}
 
 	return nil
