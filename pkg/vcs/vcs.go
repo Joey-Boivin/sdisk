@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"compress/zlib"
+	"crypto/sha1"
 	"fmt"
 	"io"
 	"os"
@@ -56,6 +57,44 @@ func (vcs *Vcs) Cat(shasum string, writer io.Writer) error {
 	}
 
 	return vcs.printObject(f, writer)
+}
+
+func (vcs *Vcs) CreateObject(file string) error {
+	_, err := os.Stat(file)
+	if err != nil {
+		return err
+	}
+
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	hasher := sha1.New()
+	io.Writer.Write(hasher, content)
+	sum := hasher.Sum(nil)
+	path := fmt.Sprintf("%x", sum)
+	dir := path[:2]
+	fileName := path[2:]
+
+	err = os.Mkdir(fmt.Sprintf("%s/%s", vcs.objectsDirectoryPath, dir), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(fmt.Sprintf("%s/%s/%s", vcs.objectsDirectoryPath, dir, fileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+	zlibWriter := zlib.NewWriter(f)
+	toWrite := fmt.Sprintf("blob %d\x00%s", len(content), content)
+	n, err := zlibWriter.Write([]byte(toWrite))
+	zlibWriter.Close()
+	fmt.Printf("%d\n", n)
+	return err
 }
 
 func (vcs *Vcs) createEmptyRepository() error {
