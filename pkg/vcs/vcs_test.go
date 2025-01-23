@@ -122,7 +122,7 @@ func TestCreateObject(t *testing.T) {
 
 	t.Run("GivenFileDoesNotExist_WhenCreateObject_ThenReturnError", func(t *testing.T) {
 		defer teardown()
-		vcs.Init()
+		_ = vcs.Init()
 		buff := bytes.Buffer{}
 		expectedContent := "hello world"
 		fileName := "test.txt"
@@ -134,7 +134,7 @@ func TestCreateObject(t *testing.T) {
 		_ = vcs.CreateObject(fileName)
 
 		writer := bytes.Buffer{}
-		vcs.Cat(shasum, &writer)
+		_ = vcs.Cat(shasum, &writer)
 		assertContentEquals(t, writer.Bytes(), buff.Bytes())
 	})
 
@@ -162,7 +162,7 @@ func createDummyFile(path string, content []byte) (*os.File, string) {
 	f, _ := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	_, _ = f.Write(content)
 	hasher := sha1.New()
-	io.Writer.Write(hasher, content)
+	_, _ = io.Writer.Write(hasher, content)
 	return f, fmt.Sprintf("%x", string(hasher.Sum(nil)))
 }
 

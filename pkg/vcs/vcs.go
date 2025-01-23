@@ -71,7 +71,11 @@ func (vcs *Vcs) CreateObject(file string) error {
 	}
 
 	hasher := sha1.New()
-	io.Writer.Write(hasher, content)
+	_, err = io.Writer.Write(hasher, content)
+	if err != nil {
+		return err
+	}
+
 	sum := hasher.Sum(nil)
 	path := fmt.Sprintf("%x", sum)
 	dir := path[:2]
