@@ -2,14 +2,13 @@ package vcs_test
 
 import (
 	"bytes"
-	"compress/zlib"
-	"crypto/sha1"
 	"fmt"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/Joey-Boivin/sdisk/pkg/vcs"
+	"github.com/Joey-Boivin/sdisk/pkg/vcs/mocks"
 )
 
 const repositoryLocation = "."
@@ -19,10 +18,19 @@ func teardown() {
 }
 
 func TestInitVersionControl(t *testing.T) {
-	v := vcs.NewVcs(repositoryLocation)
 	headPath := fmt.Sprintf("%s/%s", vcs.VcsDirectoryName, vcs.HeadName)
 	refsPath := fmt.Sprintf("%s/%s", vcs.VcsDirectoryName, vcs.RefsDirectoryName)
 	objectsPath := fmt.Sprintf("%s/%s", vcs.VcsDirectoryName, vcs.ObjectsDirectoryName)
+
+	hasherDummy := mocks.HasherMock{FnSum: func(b []byte) []byte {
+		return []byte{}
+	}}
+
+	compressorDummy := mocks.CompressorMock{FnCompress: func(writer io.Writer, uncompressed []byte) (int, error) {
+		return 0, nil
+	}}
+
+	v := vcs.NewVcs(repositoryLocation, &hasherDummy, &compressorDummy)
 
 	t.Run("GivenDirectoryUninitialized_WhenInitializing_CreateRootDirectory", func(t *testing.T) {
 		defer teardown()
@@ -82,15 +90,30 @@ func TestInitVersionControl(t *testing.T) {
 }
 
 func TestCat(t *testing.T) {
-	vcs := vcs.NewVcs(".")
+	compressedData := "hel"
+	unCompressedData := "hello world"
+
+	hasherMock := mocks.HasherMock{FnSum: func(b []byte) []byte {
+		return []byte(unCompressedData)
+	}}
+
+	compressorMock := mocks.CompressorMock{
+		FnCompress: func(writer io.Writer, uncompressed []byte) (int, error) {
+			return writer.Write([]byte(compressedData))
+		},
+		FnUnCompress: func(writer io.Writer, reader io.Reader) (int, error) {
+			return writer.Write([]byte(unCompressedData))
+		}}
+
+	v := vcs.NewVcs(repositoryLocation, &hasherMock, &compressorMock)
 
 	t.Run("GivenObjectFileExists_WhenCat_ThenPrintWithoutErrors", func(t *testing.T) {
 		defer teardown()
 		buff := bytes.Buffer{}
 		shasum := "0c06f3d6bb103b054c3e8472e95fe6efd74b88b3"
-		_ = createFakeCompressedObject(shasum)
+		createFakeCompressedObject(shasum, unCompressedData)
 
-		err := vcs.Cat(shasum, &buff)
+		err := v.Cat(shasum, &buff)
 
 		assertNoError(t, err)
 	})
@@ -99,17 +122,17 @@ func TestCat(t *testing.T) {
 		defer teardown()
 		shasum := "0c06f3d6bb103b054c3e8472e95fe6efd74b88b3"
 		buff := bytes.Buffer{}
-		content := createFakeCompressedObject(shasum)
+		createFakeCompressedObject(shasum, compressedData)
 
-		_ = vcs.Cat(shasum, &buff)
+		_ = v.Cat(shasum, &buff)
 
-		assertStringEquals(t, buff.String(), content)
+		assertStringEquals(t, unCompressedData, buff.String())
 	})
 
 	t.Run("GivenObjectFileDoesNotExist_WhenCat_ThenReturnError", func(t *testing.T) {
 		defer teardown()
 		buff := bytes.Buffer{}
-		err := vcs.Cat("nonexistantfileshasum", &buff)
+		err := v.Cat("nonexistantfileshasum", &buff)
 
 		assertError(t, err)
 	})
@@ -117,53 +140,73 @@ func TestCat(t *testing.T) {
 }
 
 func TestCreateObject(t *testing.T) {
+	compressedData := "hel"
+	unCompressedData := "hello world"
+	dummyFileName := "text.txt"
 
-	vcs := vcs.NewVcs(".")
+	hasherMock := mocks.HasherMock{FnSum: func(b []byte) []byte {
+		return []byte(unCompressedData)
+	}}
+
+	compressionMock := mocks.CompressorMock{
+		FnCompress: func(writer io.Writer, uncompressed []byte) (int, error) {
+			return writer.Write([]byte(compressedData))
+		},
+		FnUnCompress: func(writer io.Writer, reader io.Reader) (int, error) {
+			return writer.Write([]byte(unCompressedData))
+		}}
+
+	v := vcs.NewVcs(repositoryLocation, &hasherMock, &compressionMock)
 
 	t.Run("GivenFileDoesNotExist_WhenCreateObject_ThenReturnError", func(t *testing.T) {
 		defer teardown()
-		_ = vcs.Init()
-		buff := bytes.Buffer{}
-		expectedContent := "hello world"
-		fileName := "test.txt"
-		buff.Write([]byte(expectedContent))
-		f, shasum := createDummyFile(fileName, buff.Bytes())
-		f.Close()
-		defer os.Remove(fileName)
+		_ = v.Init()
 
-		_ = vcs.CreateObject(fileName)
+		_, err := v.CreateObject(dummyFileName)
 
-		writer := bytes.Buffer{}
-		_ = vcs.Cat(shasum, &writer)
-		assertContentEquals(t, writer.Bytes(), buff.Bytes())
+		assertError(t, err)
 	})
 
 	t.Run("GivenFileExists_WhenCreateObject_ThenReturnNoErrors", func(t *testing.T) {
+		defer teardown()
+		_ = v.Init()
+		f := createDummyFile(dummyFileName, []byte(unCompressedData))
+		f.Close()
+		defer os.Remove(dummyFileName)
 
+		_, err := v.CreateObject(dummyFileName)
+
+		assertNoError(t, err)
 	})
 
 	t.Run("WhenCreateObject_ThenCompressedObjectIsInExpectedFormat", func(t *testing.T) {
+		defer teardown()
+		_ = v.Init()
+		f := createDummyFile(dummyFileName, []byte(unCompressedData))
+		f.Close()
+		defer os.Remove(dummyFileName)
 
+		shasum, _ := v.CreateObject(dummyFileName)
+
+		writer := bytes.Buffer{}
+		_ = v.Cat(shasum, &writer)
+		assertContentEquals(t, writer.Bytes(), []byte(unCompressedData))
 	})
 }
 
-func createFakeCompressedObject(shasum string) string {
-	content := "hello, world\n"
+func createFakeCompressedObject(shasum string, content string) {
 	dir := ".vcs/objects/" + shasum[:2]
 	_ = os.MkdirAll(dir, os.ModePerm)
 	f, _ := os.OpenFile(dir+"/"+shasum[2:], os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	w := zlib.NewWriter(f)
-	_, _ = w.Write([]byte(content))
-	w.Close()
-	return content
+	_, _ = f.Write([]byte(content))
+	f.Close()
 }
 
-func createDummyFile(path string, content []byte) (*os.File, string) {
+func createDummyFile(path string, content []byte) *os.File {
 	f, _ := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	_, _ = f.Write(content)
-	hasher := sha1.New()
-	_, _ = io.Writer.Write(hasher, content)
-	return f, fmt.Sprintf("%x", string(hasher.Sum(nil)))
+	_, _ = f.Write(content)
+	return f
 }
 
 func assertError(t *testing.T, got error) {

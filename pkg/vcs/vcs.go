@@ -1,9 +1,8 @@
 package vcs
 
 import (
-	"compress/zlib"
-	"crypto/sha1"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 )
@@ -18,20 +17,29 @@ const (
 	HeadInitialValue     = "ref: refs/head/master\n"
 )
 
+type CompressionAlgorithm interface {
+	Compress(writer io.Writer, uncompressed []byte) (int, error)
+	Uncompress(writer io.Writer, reader io.Reader) (int, error)
+}
+
 type Vcs struct {
 	rootDirectoryPath    string
 	objectsDirectoryPath string
 	refsDirectoryPath    string
 	headPath             string
+	hasher               hash.Hash
+	compressionAlgorithm CompressionAlgorithm
 }
 
-func NewVcs(path string) *Vcs {
+func NewVcs(path string, hasher hash.Hash, compressionAlgorithm CompressionAlgorithm) *Vcs {
 	root := fmt.Sprintf("%s/%s", path, VcsDirectoryName)
 	return &Vcs{
 		rootDirectoryPath:    root,
 		objectsDirectoryPath: fmt.Sprintf("%s/%s", root, ObjectsDirectoryName),
 		refsDirectoryPath:    fmt.Sprintf("%s/%s", root, RefsDirectoryName),
 		headPath:             fmt.Sprintf("%s/%s", root, HeadName),
+		hasher:               hasher,
+		compressionAlgorithm: compressionAlgorithm,
 	}
 }
 
@@ -59,46 +67,42 @@ func (vcs *Vcs) Cat(shasum string, writer io.Writer) error {
 	return vcs.printObject(f, writer)
 }
 
-func (vcs *Vcs) CreateObject(file string) error {
+func (vcs *Vcs) CreateObject(file string) (string, error) {
 	_, err := os.Stat(file)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	content, err := os.ReadFile(file)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	hasher := sha1.New()
-	_, err = io.Writer.Write(hasher, content)
+	_, err = io.Writer.Write(vcs.hasher, content)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	sum := hasher.Sum(nil)
+	sum := vcs.hasher.Sum(nil)
 	path := fmt.Sprintf("%x", sum)
 	dir := path[:2]
 	fileName := path[2:]
 
 	err = os.Mkdir(fmt.Sprintf("%s/%s", vcs.objectsDirectoryPath, dir), os.ModePerm)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	f, err := os.OpenFile(fmt.Sprintf("%s/%s/%s", vcs.objectsDirectoryPath, dir, fileName), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 
 	if err != nil {
-		return err
+		return "", err
 	}
-
 	defer f.Close()
-	zlibWriter := zlib.NewWriter(f)
+
 	toWrite := fmt.Sprintf("blob %d\x00%s", len(content), content)
-	n, err := zlibWriter.Write([]byte(toWrite))
-	zlibWriter.Close()
-	fmt.Printf("%d\n", n)
-	return err
+	_, err = vcs.compressionAlgorithm.Compress(f, []byte(toWrite))
+	return path, err
 }
 
 func (vcs *Vcs) createEmptyRepository() error {
@@ -131,19 +135,7 @@ func (vcs *Vcs) findObjectFile(shasum string) (io.Reader, error) {
 	return os.OpenFile(path, os.O_RDONLY, 0644)
 }
 
-func (vcs *Vcs) printObject(objectReader io.Reader, writer io.Writer) error {
-	zlibReader, err := zlib.NewReader(objectReader)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(writer, zlibReader)
+func (vcs *Vcs) printObject(reader io.Reader, writer io.Writer) error {
+	_, err := vcs.compressionAlgorithm.Uncompress(writer, reader)
 	return err
-}
-
-type ErrVcsAlreadyInitialized struct {
-}
-
-func (e *ErrVcsAlreadyInitialized) Error() string {
-	return "already a vcs directory"
 }
