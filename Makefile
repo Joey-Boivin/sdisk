@@ -15,11 +15,12 @@ INFO_CLEAN = ${BOLD_GREEN}INFO: Target clean${COLOR_OFF}
 INFO_TEST_FILES =  ${BOLD_YELLOW}WARN: Creating large files for tests in data folder. Don't forget to make clean!${COLOR_OFF}
 WARN_BENCHMARK_FILES = ${BOLD_YELLOW}WARN: Creating large files for benchmarks in data folder. Don't forget to make clean!${COLOR_OFF}
 
-all: build
+all: prep
 
 prep:
-	@. scripts/env.sh
 	@echo -e "${INFO_PREP}"
+	@. scripts/env.sh
+	@. scripts/setup-hooks.sh
 	@mkdir -p bin
 	@mkdir -p "${SDISK_ROOT}"
 

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+echo $(make format)
+if [ -n "$gofmt_output" ]; then
+  echo "ERROR: Go formatting issues found!"
+  echo "$gofmt_output"
+  echo "Please run 'go fmt ./...' to fix the formatting."
+  exit 1
+fi
+
+echo $(make lint)
+if [ $? -ne 0 ]; then
+  echo "ERROR: Linting issues found!"
+  echo "$golangci-lint_output"
+  echo "Please fix the linting issues before committing."
+  exit 1
+fi
+
+echo "All checks passed!"
+exit 0
