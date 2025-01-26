@@ -21,7 +21,7 @@ make build lint test
 - delve
 - bruno
 - golangci-lint
-- python 3.9
+- python 3.9 
 
 
 
